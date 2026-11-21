@@ -3,12 +3,14 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { colorFromName, isDarkHex } from '@shared/colors'
 import { GARMENT_CATEGORIES, GARMENT_CATEGORY_LABELS, GarmentSchema, SUPPLIER_LABELS, SUPPLIERS, type GarmentInput } from '@shared/schemas'
-import { normalizeSize, SIZE_GROUP_LABELS, sizeGroup, sortSizes, STANDARD_SIZES, YOUTH_SIZES } from '@shared/sizes'
+import { normalizeSize, SIZE_GROUP_LABELS, SIZE_GROUPS, sizeGroup, sortSizes, STANDARD_SIZES, YOUTH_SIZES, type SizeGroup } from '@shared/sizes'
+import { bpToPercentString, formatMoney } from '@shared/money'
+import { garmentCosts, garmentGroupPrices, type GarmentGroupPrice } from '@shared/pricing/garment'
 import { useAsync } from '../../components/toast'
-import { Badge, Button, Card, Checkbox, ConfirmDialog, EmptyState, Field, Input, Loading, MoneyField, PageHeader, Select, Switch, Textarea, TextField, cx } from '../../components/ui'
+import { Badge, Button, Card, Checkbox, ConfirmDialog, EmptyState, Field, Input, Loading, MoneyInput, PageHeader, Select, Switch, Textarea, TextField, cx } from '../../components/ui'
 import { api } from '../../lib/api'
 import { useForm } from '../../lib/form'
-import { useGarment, useInvalidate } from '../../lib/queries'
+import { useGarment, useInvalidate, useRules } from '../../lib/queries'
 
 export const EMPTY_GARMENT: GarmentInput = {
   brand: '',
@@ -25,6 +27,59 @@ export const EMPTY_GARMENT: GarmentInput = {
   cost_4xl_plus_cents: 0,
   notes: '',
   active: true
+}
+
+type CostKey = 'cost_base_cents' | 'cost_2xl_cents' | 'cost_3xl_cents' | 'cost_4xl_plus_cents'
+const COST_KEYS: Record<SizeGroup, CostKey> = { base: 'cost_base_cents', '2xl': 'cost_2xl_cents', '3xl': 'cost_3xl_cents', '4xl_plus': 'cost_4xl_plus_cents' }
+
+/** Cost inputs per size group with the resulting sell price and margin from the pricing rules. */
+function CostAndSellCard({ values, onChange, errors, groupsUsed }: { values: GarmentInput; onChange: (k: CostKey, v: number) => void; errors: Record<string, string>; groupsUsed: Set<SizeGroup> }) {
+  const rules = useRules()
+  let rows: GarmentGroupPrice[] | null = null
+  try {
+    rows = rules.data ? garmentGroupPrices(garmentCosts(values), rules.data) : null
+  } catch {
+    rows = null
+  }
+  return (
+    <Card title="Cost and sell price">
+      <table className="w-full text-sm tabular">
+        <thead>
+          <tr className="text-left text-xs text-slate-500">
+            <th className="pb-1 font-medium">Size</th>
+            <th className="pb-1 font-medium">Your cost</th>
+            <th className="pb-1 text-right font-medium">Sell</th>
+            <th className="pb-1 pl-3 text-right font-medium">Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SIZE_GROUPS.map((g, i) => {
+            const r = rows?.[i]
+            const unused = g !== 'base' && !groupsUsed.has(g)
+            return (
+              <tr key={g} className={unused ? 'opacity-50' : ''} title={unused ? 'Not offered in the selected sizes' : undefined}>
+                <td className="py-1 pr-2 text-xs font-medium whitespace-nowrap">{SIZE_GROUP_LABELS[g]}</td>
+                <td className="py-1 pr-2">
+                  <MoneyInput value={values[COST_KEYS[g]]} onChange={(x) => onChange(COST_KEYS[g], x)} invalid={!!errors[COST_KEYS[g]]} aria-label={`Cost ${SIZE_GROUP_LABELS[g]}`} className="w-24" />
+                </td>
+                <td className="py-1 pl-2 text-right font-medium whitespace-nowrap" title={r && r.upchargeCents ? `${formatMoney(r.markedUpCents)} + ${formatMoney(r.upchargeCents)} size upcharge` : undefined}>
+                  {r && r.costCents > 0 ? formatMoney(r.sellCents) : '–'}
+                </td>
+                <td className="py-1 pl-3 text-right whitespace-nowrap text-slate-600 dark:text-slate-400">{r?.marginBp != null ? `${bpToPercentString(r.marginBp)}%` : '–'}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <p className="mt-3 text-xs text-slate-500">
+        Sell = your cost marked up by the{' '}
+        <Link to="/pricing/rules" className="underline">
+          pricing rules
+        </Link>{' '}
+        plus any size upcharge, for the blank garment before printing. Internal only; never shown to customers.
+      </p>
+    </Card>
+  )
 }
 
 export function GarmentEditor() {
@@ -261,14 +316,7 @@ function Editor({ id }: { id: number }) {
         </div>
 
         <div className="flex flex-col gap-5">
-          <Card title="Your cost per piece">
-            <div className="flex flex-col gap-3">
-              <MoneyField label={`${SIZE_GROUP_LABELS.base} (and youth, XS)`} value={v.cost_base_cents} onChange={(x) => f.set('cost_base_cents', x)} error={e.cost_base_cents} />
-              <MoneyField label="2XL" value={v.cost_2xl_cents} onChange={(x) => f.set('cost_2xl_cents', x)} error={e.cost_2xl_cents} hint={!groupsUsed.has('2xl') ? 'Not offered in selected sizes' : undefined} />
-              <MoneyField label="3XL" value={v.cost_3xl_cents} onChange={(x) => f.set('cost_3xl_cents', x)} error={e.cost_3xl_cents} hint={!groupsUsed.has('3xl') ? 'Not offered in selected sizes' : undefined} />
-              <MoneyField label="4XL and up" value={v.cost_4xl_plus_cents} onChange={(x) => f.set('cost_4xl_plus_cents', x)} error={e.cost_4xl_plus_cents} hint={!groupsUsed.has('4xl_plus') ? 'Not offered in selected sizes' : undefined} />
-            </div>
-          </Card>
+          <CostAndSellCard values={v} onChange={(k, x) => f.set(k, x)} errors={e} groupsUsed={groupsUsed} />
           <Card title="Status">
             <Switch checked={v.active} onChange={(x) => f.set('active', x)} label="Active" hint="Inactive garments stay in the catalog but are hidden when building quotes." />
           </Card>

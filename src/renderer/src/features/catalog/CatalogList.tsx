@@ -1,13 +1,36 @@
 import { Copy, FileUp, Plus, Shirt } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { formatMoney } from '@shared/money'
-import { GARMENT_CATEGORIES, GARMENT_CATEGORY_LABELS, SUPPLIER_LABELS, type Garment } from '@shared/schemas'
+import { bpToPercentString, formatMoney } from '@shared/money'
+import { garmentCosts, garmentGroupPrices, type GarmentGroupPrice } from '@shared/pricing/garment'
+import { SIZE_GROUP_LABELS } from '@shared/sizes'
+import { GARMENT_CATEGORIES, GARMENT_CATEGORY_LABELS, SUPPLIER_LABELS, type Garment, type PricingRules } from '@shared/schemas'
 import { useAsync } from '../../components/toast'
 import { Badge, Button, Checkbox, EmptyState, Input, Loading, PageHeader, Select, Table, Td, Th } from '../../components/ui'
 import { api } from '../../lib/api'
-import { useGarments, useInvalidate } from '../../lib/queries'
+import { useGarments, useInvalidate, useRules } from '../../lib/queries'
 import { CsvImportDialog } from './CsvImport'
+
+/** Cost, sell price and margin columns for one garment (blank garment, before printing). */
+function SellCells({ g, rules }: { g: Garment; rules: PricingRules | undefined }) {
+  let p: GarmentGroupPrice[] | null = null
+  try {
+    p = rules ? garmentGroupPrices(garmentCosts(g), rules) : null
+  } catch {
+    p = null
+  }
+  const sell = (r: GarmentGroupPrice | undefined) => (r && r.costCents > 0 ? formatMoney(r.sellCents) : '–')
+  return (
+    <>
+      <Td className="text-right text-slate-600 tabular dark:text-slate-400">{formatMoney(g.cost_base_cents)}</Td>
+      <Td className="text-right font-medium tabular">{sell(p?.[0])}</Td>
+      <Td className="text-right tabular">{p?.[0]?.marginBp != null ? `${bpToPercentString(p[0].marginBp)}%` : '–'}</Td>
+      <Td className="text-right text-xs whitespace-nowrap text-slate-600 tabular dark:text-slate-400">
+        <span title={p ? p.slice(1).map((r) => `${SIZE_GROUP_LABELS[r.group]}: cost ${formatMoney(r.costCents)}, sell ${sell(r)}`).join('\n') : undefined}>{p ? p.slice(1).map(sell).join(' / ') : '–'}</span>
+      </Td>
+    </>
+  )
+}
 
 function Swatches({ g }: { g: Garment }) {
   const shown = g.colors.slice(0, 10)
@@ -30,12 +53,13 @@ export function CatalogList() {
   const run = useAsync()
   const invalidate = useInvalidate()
   const { data, isLoading } = useGarments({ search, category: category || undefined, includeArchived: archived })
+  const rules = useRules()
 
   return (
     <>
       <PageHeader
         title="Garment catalog"
-        subtitle="Blank garments with your cost per size group. Quotes copy the garment, so later cost changes never alter old quotes."
+        subtitle="Blank garments with your cost and the sell price from your pricing rules (before printing; internal only). Quotes copy the garment, so later changes never alter old quotes."
         actions={
           <>
             <Button icon={<FileUp className="size-4" />} onClick={() => setImporting(true)}>
@@ -75,7 +99,9 @@ export function CatalogList() {
               <Th>Colors</Th>
               <Th>Sizes</Th>
               <Th className="text-right">Cost S–XL</Th>
-              <Th className="text-right">2XL / 3XL / 4XL+</Th>
+              <Th className="text-right">Sell S–XL</Th>
+              <Th className="text-right">Margin</Th>
+              <Th className="text-right">Sell 2XL/3XL/4XL+</Th>
               <Th />
             </tr>
           </thead>
@@ -96,10 +122,7 @@ export function CatalogList() {
                   <Swatches g={g} />
                 </Td>
                 <Td className="text-xs text-slate-600 dark:text-slate-400">{g.sizes.length > 6 ? `${g.sizes[0]}–${g.sizes[g.sizes.length - 1]}` : g.sizes.join(' ')}</Td>
-                <Td className="text-right tabular">{formatMoney(g.cost_base_cents)}</Td>
-                <Td className="text-right text-xs text-slate-600 tabular dark:text-slate-400">
-                  {[g.cost_2xl_cents, g.cost_3xl_cents, g.cost_4xl_plus_cents].map((x) => formatMoney(x)).join(' / ')}
-                </Td>
+                <SellCells g={g} rules={rules.data} />
                 <Td className="text-right">
                   <Button
                     size="sm"

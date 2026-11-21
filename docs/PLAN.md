@@ -315,7 +315,8 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 - [x] Garment catalog: CRUD, colors (with dark flag), sizes, size-group costs, supplier, duplicate, archive
 - [x] CSV import with column mapping (brand, style, name, color, sizes, cost) + preview + merge/skip existing
 - [x] Pricing: matrix list, grid editor (add/remove breaks and columns, inline cells, above-max rule)
-- [x] Pricing rules form; fee presets CRUD; ink library CRUD
+- [x] Pricing rules form (markup by percent, multiplier or target margin); fee presets CRUD; ink library CRUD
+- [x] Cost, sell price and margin per size group in the catalog list and garment editor
 - [x] Settings page covering every `settings` field (SMTP password via safeStorage)
 - [x] Daily auto-backup (keep 30), Backup now, Restore from backup (list or file)
 - [x] Tests: money, migrations, numbering allocation, customers/garments/pricing repos, CSV mapping, backup rotation/validation/restore, garment markup

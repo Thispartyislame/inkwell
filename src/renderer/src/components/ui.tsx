@@ -1,11 +1,13 @@
 import * as RDialog from '@radix-ui/react-dialog'
 import * as RSwitch from '@radix-ui/react-switch'
 import clsx from 'clsx'
+import { twMerge } from 'tailwind-merge'
 import { AlertTriangle, Loader2, X } from 'lucide-react'
-import { forwardRef, useEffect, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { cloneElement, forwardRef, isValidElement, useEffect, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { bpToPercentString, centsToPlain, parseMoney, parsePercent } from '@shared/money'
 
-export const cx = clsx
+/** Join class names; later Tailwind classes win over conflicting earlier ones (w-44 beats w-full). */
+export const cx = (...a: Parameters<typeof clsx>) => twMerge(clsx(...a))
 
 // ---------- Button ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -58,14 +60,22 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   )
 })
 
-/** Label + control + error/hint. Pass the control as children. */
+/** Label + control + error/hint. Pass the control as children; a single control is linked to the label automatically. */
 export function Field({ label, error, hint, children, className, htmlFor }: { label: ReactNode; error?: string; hint?: ReactNode; children: ReactNode; className?: string; htmlFor?: string }) {
+  const autoId = useId()
+  let control = children
+  let forId = htmlFor
+  const linkable = (t: unknown) => typeof t === 'string' || t === Select || t === Input || t === Textarea
+  if (!forId && isValidElement<{ id?: string }>(children) && linkable(children.type)) {
+    forId = children.props.id ?? autoId
+    control = cloneElement(children, { id: forId })
+  }
   return (
     <div className={cx('flex flex-col gap-1', className)}>
-      <label htmlFor={htmlFor} className="text-xs font-medium text-slate-600 dark:text-slate-300">
+      <label htmlFor={forId} className="text-xs font-medium text-slate-600 dark:text-slate-300">
         {label}
       </label>
-      {children}
+      {control}
       {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : hint ? <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p> : null}
     </div>
   )
@@ -303,7 +313,7 @@ export const Th = ({ children, className, onClick, sorted }: { children?: ReactN
   <th
     onClick={onClick}
     className={cx(
-      'border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400',
+      'border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400',
       onClick && 'cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200',
       className
     )}

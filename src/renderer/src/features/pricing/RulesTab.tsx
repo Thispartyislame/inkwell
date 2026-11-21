@@ -1,13 +1,53 @@
 import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
-import { garmentPrice } from '@shared/pricing/garment'
-import { formatMoney } from '@shared/money'
+import { convertMarkupValue, garmentPrice, marginBp } from '@shared/pricing/garment'
+import { bpToPercentString, divRound, formatMoney } from '@shared/money'
 import { PricingRulesSchema, SPECIALTY_INKS, SPECIALTY_LABELS, type PricingRules, type PricingRulesInput } from '@shared/schemas'
 import { useAsync } from '../../components/toast'
 import { Button, Card, Field, IntField, Loading, MoneyField, MoneyInput, MultiplierInput, Notice, PercentField, PercentInput, SampleBadge, Select } from '../../components/ui'
 import { api } from '../../lib/api'
 import { useForm } from '../../lib/form'
 import { useInvalidate, useRules } from '../../lib/queries'
+
+const MODE_HEADING: Record<PricingRulesInput['markup_mode'], string> = { percent: 'Markup', multiplier: 'Multiplier', margin: 'Target margin' }
+
+/** Cost → sell price → profit and margin for a few sample garment costs, live as rules change. */
+function MarkupPreview({ rules }: { rules: PricingRulesInput }) {
+  const costs = [250, 500, 800, 1500, 2500]
+  let rows: { cost: number; sell: number; margin: number | null }[]
+  try {
+    rows = costs.map((cost) => {
+      const sell = garmentPrice(cost, rules)
+      return { cost, sell, margin: marginBp(cost, sell) }
+    })
+  } catch {
+    return null
+  }
+  return (
+    <table className="mt-1 w-full text-xs tabular">
+      <thead>
+        <tr className="text-left text-slate-500">
+          <th className="py-1 font-medium">Garment cost</th>
+          <th className="py-1 text-right font-medium">Sell price</th>
+          <th className="py-1 text-right font-medium">Profit</th>
+          <th className="py-1 text-right font-medium">Margin</th>
+          <th className="py-1 text-right font-medium">Markup</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.cost} className="border-t border-slate-100 dark:border-slate-800">
+            <td className="py-1">{formatMoney(r.cost)}</td>
+            <td className="py-1 text-right font-medium">{formatMoney(r.sell)}</td>
+            <td className="py-1 text-right">{formatMoney(r.sell - r.cost)}</td>
+            <td className="py-1 text-right">{r.margin === null ? '–' : `${bpToPercentString(r.margin)}%`}</td>
+            <td className="py-1 text-right text-slate-500">{bpToPercentString(divRound((r.sell - r.cost) * 10000, r.cost))}%</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
 
 export function RulesTab() {
   const { data, isLoading } = useRules()
@@ -33,8 +73,8 @@ function RulesForm({ rules }: { rules: PricingRules }) {
     f.set('markup_tiers', tiers)
   }
   const switchMode = (mode: PricingRulesInput['markup_mode']) => {
-    // Convert existing values so the effective markup stays the same: +100% ⇄ ×2.0
-    const tiers = v.markup_tiers.map((t) => ({ ...t, value: mode === 'multiplier' ? Math.round((t.value + 10000) / 10) : Math.max(0, t.value * 10 - 10000) }))
+    // Convert existing values so prices stay the same: +100% markup = ×2.0 = 50% margin
+    const tiers = v.markup_tiers.map((t) => ({ ...t, value: convertMarkupValue(t.value, v.markup_mode, mode) }))
     f.patch({ markup_mode: mode, markup_tiers: tiers })
   }
 
@@ -47,7 +87,6 @@ function RulesForm({ rules }: { rules: PricingRules }) {
     if (ok) await invalidate('rules')
   }
 
-  const examples = [250, 800, 2000]
   const tierError = Object.entries(e).find(([k]) => k.startsWith('markup_tiers'))?.[1]
 
   return (
@@ -72,13 +111,14 @@ function RulesForm({ rules }: { rules: PricingRules }) {
               <Select value={v.markup_mode} onChange={(ev) => switchMode(ev.target.value as PricingRulesInput['markup_mode'])}>
                 <option value="percent">Percent over cost</option>
                 <option value="multiplier">Multiplier of cost</option>
+                <option value="margin">Target margin on the sell price</option>
               </Select>
             </Field>
             <table className="text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
                   <th className="pb-1 font-medium">Garments costing up to</th>
-                  <th className="pb-1 font-medium">{v.markup_mode === 'percent' ? 'Markup' : 'Multiplier'}</th>
+                  <th className="pb-1 font-medium">{MODE_HEADING[v.markup_mode]}</th>
                   <th />
                 </tr>
               </thead>
@@ -89,8 +129,8 @@ function RulesForm({ rules }: { rules: PricingRules }) {
                     <tr key={i}>
                       <td className="py-1 pr-2">{last ? <span className="text-sm text-slate-500">{v.markup_tiers.length > 1 ? 'Anything more' : 'Any cost'}</span> : <MoneyInput value={t.up_to_cents} onChange={(x) => setTier(i, { up_to_cents: x })} aria-label={`Tier ${i + 1} limit`} />}</td>
                       <td className="py-1 pr-2">
-                        {v.markup_mode === 'percent' ? (
-                          <PercentInput value={t.value} onChange={(x) => setTier(i, { value: x })} aria-label={`Tier ${i + 1} markup`} />
+                        {v.markup_mode !== 'multiplier' ? (
+                          <PercentInput value={t.value} onChange={(x) => setTier(i, { value: x })} aria-label={`Tier ${i + 1} ${v.markup_mode === 'margin' ? 'margin' : 'markup'}`} />
                         ) : (
                           <MultiplierInput value={t.value} onChange={(x) => setTier(i, { value: x })} aria-label={`Tier ${i + 1} multiplier`} />
                         )}
@@ -111,18 +151,10 @@ function RulesForm({ rules }: { rules: PricingRules }) {
             <Button size="sm" variant="ghost" className="self-start" icon={<Plus className="size-3.5" />} onClick={addTier}>
               Add tier
             </Button>
-            <p className="text-xs text-slate-500">
-              Example:{' '}
-              {examples
-                .map((c) => {
-                  try {
-                    return `${formatMoney(c)} → ${formatMoney(garmentPrice(c, v))}`
-                  } catch {
-                    return ''
-                  }
-                })
-                .join(' · ')}
-            </p>
+            {v.markup_mode === 'margin' && (
+              <p className="text-xs text-slate-500">Margin is profit as a share of the sell price: a $3.00 garment at 40% margin sells for $5.00 ($3.00 ÷ 0.60).</p>
+            )}
+            <MarkupPreview rules={v} />
           </div>
         </Card>
 

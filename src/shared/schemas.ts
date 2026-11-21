@@ -270,17 +270,24 @@ export const SPECIALTY_LABELS: Record<SpecialtyInk, string> = {
   high_density: 'High density'
 }
 
+export const MARKUP_MODES = ['percent', 'multiplier', 'margin'] as const
+export type MarkupMode = (typeof MARKUP_MODES)[number]
+
 export const MarkupTierSchema = z.object({
   /** applies to garments costing up to this many cents; null = no upper limit */
   up_to_cents: cents.nullable(),
-  /** percent mode: basis points of markup (10000 = +100%); multiplier mode: ×1000 (1800 = ×1.8) */
+  /**
+   * percent mode: basis points of markup over cost (10000 = +100%)
+   * multiplier mode: multiplier × 1000 (1800 = ×1.8)
+   * margin mode: basis points of target gross margin on the sell price (4000 = 40%)
+   */
   value: z.number().int().min(0)
 })
 export type MarkupTier = z.infer<typeof MarkupTierSchema>
 
 export const PricingRulesSchema = z
   .object({
-    markup_mode: z.enum(['percent', 'multiplier']),
+    markup_mode: z.enum(MARKUP_MODES),
     markup_tiers: z.array(MarkupTierSchema).min(1, 'Add at least one markup tier'),
     underbase_mode: z.enum(['plus_one_color', 'flat_adder']),
     underbase_adder_cents: cents,
@@ -306,6 +313,8 @@ export const PricingRulesSchema = z
         ctx.addIssue({ code: 'custom', message: 'Only the last tier can have no upper limit', path: ['markup_tiers', i] })
       if (i > 0 && tier.up_to_cents !== null && t[i - 1].up_to_cents !== null && tier.up_to_cents <= t[i - 1].up_to_cents!)
         ctx.addIssue({ code: 'custom', message: 'Tier limits must increase', path: ['markup_tiers', i] })
+      if (r.markup_mode === 'margin' && tier.value >= 9500)
+        ctx.addIssue({ code: 'custom', message: 'Margin must be below 95%', path: ['markup_tiers', i] })
     })
   })
 export type PricingRulesInput = z.infer<typeof PricingRulesSchema>

@@ -81,7 +81,10 @@ test('create and duplicate a garment', async () => {
   await win.getByLabel('New color names').fill('Pepper, Ivory')
   await win.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(win.getByLabel('Color name', { exact: true }).first()).toHaveValue('Pepper')
-  await win.getByLabel('S–XL (and youth, XS)').fill('5.25')
+  await win.getByLabel('Cost S–XL').fill('5.25')
+  // sample rules: $5.25 is in the +75% tier → $9.19, margin 42.87%
+  await expect(win.getByRole('row', { name: /S–XL/ })).toContainText('$9.19')
+  await expect(win.getByRole('row', { name: /S–XL/ })).toContainText('42.87%')
   await win.getByRole('button', { name: 'Save' }).click()
   await expect(win.getByText('Garment added')).toBeVisible()
   await win.getByRole('button', { name: 'Duplicate' }).click()
@@ -99,6 +102,22 @@ test('edit a pricing matrix', async () => {
   await win.getByRole('button', { name: 'Save matrix' }).click()
   await expect(win.getByText('Matrix saved')).toBeVisible()
   await expect(win.getByText('Sample: edit these to match your pricing')).toHaveCount(0)
+})
+
+test('price garments by target margin', async () => {
+  await nav('Pricing')
+  await win.getByRole('tab', { name: 'Pricing rules' }).click()
+  await win.getByLabel('Mark up by').selectOption('margin')
+  // +100% markup converts to a 50% margin, so prices don't change
+  await expect(win.getByLabel('Tier 1 margin')).toHaveValue('50')
+  for (const i of [1, 2, 3]) await win.getByLabel(`Tier ${i} margin`).fill('40')
+  await expect(win.getByRole('row', { name: /^\$2\.50/ })).toContainText('$4.17')
+  await win.getByRole('button', { name: 'Save rules' }).click()
+  await expect(win.getByText('Pricing rules saved')).toBeVisible()
+  await nav('Catalog')
+  // Gildan 5000 costs $2.50 → $4.17 at 40% margin
+  await expect(win.getByRole('row', { name: /Gildan 5000/ })).toContainText('$4.17')
+  await expect(win.getByRole('row', { name: /Gildan 5000/ })).toContainText('40.05%')
 })
 
 test('settings validation and backup', async () => {

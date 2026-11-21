@@ -253,3 +253,22 @@ describe('search', () => {
     expect(globalSearch(db, 'gildan').every((x) => x.kind === 'garment')).toBe(true)
   })
 })
+
+describe('migration 002: margin pricing', () => {
+  it('upgrades a Phase 1 database without losing edited rules', () => {
+    const old = new Database(':memory:')
+    migrate(old, MIGRATIONS.filter((m) => m.version === 1))
+    seedIfEmpty(old)
+    old.prepare('UPDATE pricing_rules SET screen_fee_cents = 3100, is_sample = 0').run()
+    expect(() => old.prepare("UPDATE pricing_rules SET markup_mode = 'margin'").run()).toThrow(/CHECK/)
+    migrate(old)
+    const r = getRules(old)
+    expect(r.screen_fee_cents).toBe(3100)
+    expect(r.markup_tiers.length).toBe(3)
+    expect(saveRules(old, { ...r, markup_mode: 'margin', markup_tiers: [{ up_to_cents: null, value: 4000 }] }).markup_mode).toBe('margin')
+  })
+  it('rejects a margin of 95% or more', () => {
+    const r = getRules(db)
+    expect(() => saveRules(db, { ...r, markup_mode: 'margin', markup_tiers: [{ up_to_cents: null, value: 9500 }] })).toThrow(/below 95%/)
+  })
+})
