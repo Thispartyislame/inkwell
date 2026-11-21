@@ -1,0 +1,115 @@
+# Builds the Windows, macOS and Linux installers.
+# Runs when you push a version tag (v1.2.3) or click "Run workflow" on the Actions tab.
+# A tag also publishes the installers as a GitHub Release.
+name: Build installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, os: windows-latest, dist: '--win', artifact: 'dist/*.exe' }
+          - { name: macOS, os: macos-latest, dist: '--mac', artifact: 'dist/*.dmg' }
+          - { name: Linux, os: ubuntu-latest, dist: '--linux AppImage', artifact: 'dist/*.AppImage' }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build app
+        run: npm run build
+
+      - name: End-to-end tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx playwright test --trace off
+
+      - name: Build installer
+        shell: bash
+        env:
+          # Unsigned builds: don't look for signing certificates.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder ${{ matrix.dist }} --publish never
+
+      - name: Check install and uninstall (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist\*.exe | Select-Object -First 1
+          Write-Host "Installing $($installer.Name) silently"
+          Start-Process $installer.FullName -ArgumentList '/S' -Wait
+          $app = "$env:LOCALAPPDATA\Programs\Inkwell\Inkwell.exe"
+          if (-not (Test-Path $app)) { throw "Not installed: $app missing" }
+          $entry = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' |
+            Get-ItemProperty | Where-Object { $_.DisplayName -like 'Inkwell*' } | Select-Object -First 1
+          if (-not $entry) { throw 'No entry in Apps & features (uninstall registry key missing)' }
+          Write-Host "Apps & features entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+          $uninstaller = "$env:LOCALAPPDATA\Programs\Inkwell\Uninstall Inkwell.exe"
+          if (-not (Test-Path $uninstaller)) { throw "Uninstaller missing: $uninstaller" }
+          Start-Process $uninstaller -ArgumentList '/S' -Wait
+          # The uninstaller copies itself to a temp folder and finishes there; give it time.
+          for ($i = 0; $i -lt 30 -and (Test-Path $app); $i++) { Start-Sleep -Seconds 2 }
+          if (Test-Path $app) { throw 'Uninstall did not remove the app' }
+          $left = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' |
+            Get-ItemProperty | Where-Object { $_.DisplayName -like 'Inkwell*' }
+          if ($left) { throw 'Uninstall left the Apps & features entry behind' }
+          Write-Host 'Installed and uninstalled cleanly.'
+
+      - name: Check disk image (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          for dmg in dist/*.dmg; do
+            echo "Checking $dmg"
+            mnt=$(hdiutil attach "$dmg" -nobrowse -readonly | tail -1 | awk -F'\t' '{print $NF}')
+            test -d "$mnt/Inkwell.app" || { echo "Inkwell.app missing in $dmg"; exit 1; }
+            # "Uninstalling" on macOS = removing the app; make sure a copy can be added and removed.
+            cp -R "$mnt/Inkwell.app" "$RUNNER_TEMP/Inkwell.app"
+            rm -rf "$RUNNER_TEMP/Inkwell.app"
+            hdiutil detach "$mnt"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inkwell-${{ matrix.name }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" installers/* --repo "${GITHUB_REPOSITORY}" --title "Inkwell ${GITHUB_REF_NAME}" --generate-notes

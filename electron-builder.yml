@@ -26,8 +26,11 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Inkwell
-  # Your data lives in %APPDATA%\Inkwell and is never removed by the uninstaller.
+  # Uninstall from Settings → Apps (or the Start menu). Data in %APPDATA%\Inkwell is kept
+  # unless you say yes when the uninstaller asks (see resources/installer.nsh).
   deleteAppDataOnUninstall: false
+  include: resources/installer.nsh
+  uninstallDisplayName: Inkwell
 
 mac:
   target:
