@@ -44,7 +44,12 @@ jobs:
 
       - name: End-to-end tests (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npx playwright test --trace off
+        run: |
+          # "Open PDF" would launch a real viewer on the runner; replace it with a no-op.
+          mkdir -p "$RUNNER_TEMP/fakebin"
+          printf '#!/bin/sh\nexit 0\n' > "$RUNNER_TEMP/fakebin/xdg-open"
+          chmod +x "$RUNNER_TEMP/fakebin/xdg-open"
+          PATH="$RUNNER_TEMP/fakebin:$PATH" xvfb-run -a npx playwright test --trace off
 
       - name: Build installer
         shell: bash

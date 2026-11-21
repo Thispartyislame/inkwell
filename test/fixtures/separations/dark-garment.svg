@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1in" height="1in" viewBox="0 0 72 72">
+  <!-- for a black shirt: white and yellow on black; the black background should drop -->
+  <rect x="0" y="0" width="72" height="72" fill="#000000"/>
+  <rect x="6" y="6" width="30" height="30" fill="#ffffff"/>
+  <rect x="36" y="36" width="30" height="30" fill="#ffd100"/>
+  <text x="5" y="70" font-family="Impact">LIVE</text>
+  <image x="50" y="0" width="10" height="10" href="data:image/png;base64,iVBORw0KGgo="/>
+</svg>

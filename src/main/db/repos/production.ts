@@ -43,7 +43,8 @@ export function boardJobs(db: DB): BoardJob[] {
 `
     )
     .all({ cutoff }) as Array<Record<string, unknown>>
-  const thumb = db.prepare(`SELECT rel_path, mime FROM attachments WHERE owner_type = ? AND owner_id = ? AND include_in_pdf = 1 ORDER BY sort_order, id`)
+  // A mockup on the PDF first; otherwise a film preview from separations.
+  const thumb = db.prepare(`SELECT rel_path, mime FROM attachments WHERE owner_type = ? AND owner_id = ? AND (include_in_pdf = 1 OR kind = 'film') ORDER BY include_in_pdf DESC, sort_order, id`)
   // Soonest in-hands date first; jobs without one go last.
   rows.sort((a, b) => String(a.in_hands_on ?? '9999').localeCompare(String(b.in_hands_on ?? '9999')) || String(a.number).localeCompare(String(b.number)))
   return rows.map((r) => {

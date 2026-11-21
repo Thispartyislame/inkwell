@@ -28,6 +28,7 @@ import type { CustomerDocument } from './documents'
 export type { ReportRange } from './reports'
 import type { DashboardSummary, PaymentsByMethodRow, ReportRange, SalesByCustomerRow, SalesPeriodRow, SalesTaxRow, WinRateReport } from './reports'
 import type { BoardJob, GarmentOrder, JobRef, ProductionStatus } from './production'
+import type { FilmExport, ImprintTarget, SeparationJob, SeparationSave, SeparationSource } from './separations/job'
 import type { PricingBase, QuoteDetail, QuoteEdit, QuoteListRow, QuoteRecord, QuoteStatus } from './quote'
 import type { InvoiceDetail, InvoiceEdit, InvoiceListRow, InvoiceRecord, InvoiceStatus, Payment, PaymentInput } from './invoice'
 
@@ -283,6 +284,20 @@ export interface Api {
     garmentOrderPdf(jobs: JobRef[], mode: 'open' | 'save'): string | null
     markOrdered(jobs: JobRef[]): void
   }
+  separations: {
+    list(owner?: { type: 'quote' | 'invoice'; id: number }): SeparationJob[]
+    get(id: number): SeparationJob
+    /** from an existing artwork attachment */
+    fromAttachment(attachmentId: number): SeparationJob
+    /** from dropped files (paths) or a file picker (null) */
+    fromFile(paths: string[] | null, owner?: { type: 'quote' | 'invoice'; id: number }): SeparationJob | null
+    source(id: number): SeparationSource
+    save(id: number, data: SeparationSave): SeparationJob
+    remove(id: number): void
+    exportFilms(id: number, data: FilmExport): { path: string | null; job: SeparationJob }
+    link(id: number, target: ImprintTarget): SeparationJob
+    tools(): { inkscape: string | null; ghostscript: string | null }
+  }
   email: {
     compose(kind: DocumentKind, id: number): EmailCompose
     send(input: EmailSendInput): { to: string[] }
@@ -361,6 +376,7 @@ export const API_METHODS: MethodMap = {
   documents: { preview: true, savePdf: true, openPdf: true },
   email: { compose: true, send: true, prepareManual: true, test: true },
   reports: { dashboard: true, sales: true, byCustomer: true, salesTax: true, payments: true, winRate: true, exportCsv: true },
+  separations: { list: true, get: true, fromAttachment: true, fromFile: true, source: true, save: true, remove: true, exportFilms: true, link: true, tools: true },
   production: { board: true, setStatus: true, garmentOrder: true, garmentOrderPdf: true, markOrdered: true }
 }
 

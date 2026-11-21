@@ -25,6 +25,7 @@ import { completeSetup, getSettings, saveSettings, setLastBackupAt, setLogoPath,
 import { removeStoredFile, resolveInside, storeFile } from '../files/files'
 import { createDocumentHandlers } from './quotes'
 import { createReportHandlers } from './reports'
+import { createSeparationHandlers } from './separations'
 
 export interface MainContext {
   db: Database.Database
@@ -203,7 +204,8 @@ export function createHandlers(ctx: MainContext): ApiImpl {
     },
 
     ...createDocumentHandlers(ctx),
-    ...createReportHandlers(ctx)
+    ...createReportHandlers(ctx),
+    ...createSeparationHandlers(ctx)
   }
 }
 

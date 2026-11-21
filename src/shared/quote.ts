@@ -43,7 +43,9 @@ export const ImprintSchema = z.object({
   transfer_size: z.number().int().min(1),
   is_reorder: z.boolean(),
   matrix_id: z.number().int().positive().nullable(),
-  notes: z.string().max(1000)
+  notes: z.string().max(1000),
+  /** colors and underbase came from this separation job (shown as a badge; editable) */
+  separation_job_id: z.number().int().positive().nullable().optional()
 })
 export type QuoteImprint = z.infer<typeof ImprintSchema>
 
