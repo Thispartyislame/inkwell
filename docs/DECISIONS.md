@@ -169,3 +169,31 @@ Choices not dictated by `docs/BUILD_PROMPT.md`. Newest at the bottom.
 58. **Packaging**: unsigned builds; the NSIS installer lets you pick the folder and never deletes
     your data on uninstall; macOS dmg for Intel and Apple silicon; no auto-update (`publish:
     null`), since that would contact a server.
+
+## Phase 5
+
+59. **Licensing for separations**: paper.js (MIT), paperjs-offset (MIT), pdf.js (Apache-2.0).
+    No copyleft code is bundled. EPS uses Inkscape or Ghostscript only if the user has
+    installed them; Inkwell runs them as separate programs and doesn't ship them.
+60. **Units**: all separation geometry is in points (1/72″). SVG size comes from its
+    width/height units (unitless = CSS px at 96/in); files without a size get a warning and
+    the print width can be set by hand. Film pages use 1 SVG unit = 1 pt with page size in
+    inches, so 100% is exact (checked by rasterizing an exported film and measuring).
+61. **Visible-area model**: shapes are painted in file order and each knocks out what is
+    under it, which is what the art looks like. Dropped colors still knock out (the shirt
+    shows through there). Overprint colors don't knock out what's below them.
+62. **Trap** spreads every color printed after the first by the same amount; the first ink
+    and the underbase are never spread. **Choke** shrinks the underbase.
+63. **Highlight white** moves near-white inks to print last (after the colors) instead of
+    adding an extra plate.
+64. **Halftones (beta)**: a rotated dot grid at the chosen LPI; dot area = ink coverage,
+    taken from the gradient color's lightness relative to its darkest stop, or from a fill's
+    opacity. Dots are kept whole (no clipping at edges) and capped at 150,000 per plate.
+65. **PNG films** are rendered from the same SVG and thresholded to pure black/white; very
+    large pages lower the dpi to stay under browser canvas limits (a notice says so).
+66. **The paper.js core build** is used in the app: the full build includes a script compiler
+    that needs `eval`, which the app's Content-Security-Policy blocks.
+67. **Installers are built by GitHub Actions** on a version tag (also publishes a GitHub
+    Release) or a manual run. The Windows job proves install and uninstall work. The NSIS
+    uninstaller asks whether to delete `%APPDATA%\Inkwell` (default: keep), never during
+    updates or silent uninstalls.

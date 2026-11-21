@@ -10,6 +10,7 @@ import { DECORATION_METHODS, METHOD_LABELS, SPECIALTY_INKS, SPECIALTY_LABELS, ty
 import { normalizeSize, SIZE_GROUP_LABELS, sizeGroup, sortSizes, STANDARD_SIZES, YOUTH_SIZES } from '@shared/sizes'
 import { Badge, Button, Checkbox, cx, Input, IntInput, MoneyInput, Select, Switch } from '../../components/ui'
 import { useGarments } from '../../lib/queries'
+import { Link } from 'react-router'
 import { GarmentPicker, type GarmentChoice } from './pickers'
 
 const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL']
@@ -258,6 +259,11 @@ function ImprintRow({
         </div>
       )}
       <div className="ml-auto flex items-center gap-2 self-center">
+        {imp.separation_job_id && (
+          <Link to={`/separations/${imp.separation_job_id}`} title="Colors and underbase came from separations; you can still change them">
+            <Badge color="violet">From separations</Badge>
+          </Link>
+        )}
         {pricePerPiece != null && (
           <span className="text-xs text-slate-500 tabular" title="Decoration price per piece (internal)">
             {formatMoney(pricePerPiece)}/pc

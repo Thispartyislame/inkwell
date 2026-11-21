@@ -206,3 +206,19 @@ describe('PDF / AI import', () => {
     expect(red.path.bounds.y).toBeCloseTo(0)
   })
 })
+
+describe('garment changes', () => {
+  it('re-applies garment defaults without losing other choices', async () => {
+    const { withGarment } = await import('../../src/shared/separations/plates')
+    const art = loadSvgArt(fixture('dark-garment.svg'))
+    const colors = detectColors(art)
+    const white = defaultSettings(art, colors, '#ffffff')
+    expect(white.dropped).toEqual(['#ffffff'])
+    expect(white.underbase.enabled).toBe(false)
+    const black = withGarment({ ...white, trap_pt: 0.5 }, colors, '#111111')
+    expect(black.dropped).toEqual(['#000000'])
+    expect(black.underbase.enabled).toBe(true)
+    expect(black.trap_pt).toBe(0.5)
+    expect(withGarment(black, colors, '#ffffff').dropped).toEqual(['#ffffff'])
+  })
+})

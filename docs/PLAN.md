@@ -366,31 +366,29 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 - [x] Production status on approved quotes and invoices (Awaiting art → … → Picked up / shipped), carried from quote to invoice; drag-and-drop board
 - [x] Garment order list: pick jobs, combined by supplier → style → color → size with estimated cost; CSV and PDF; "Mark as ordered"
 - [x] Packaging: app icon, electron-builder config for Windows (NSIS) and macOS (dmg, Intel + Apple silicon), version in Settings → About; packaged build verified (Linux AppImage launched, migrated, rendered a PDF, backed up)
-- [ ] Windows installer and macOS dmg produced: must be built on Windows and a Mac (this sandbox can't run Wine; macOS builds need macOS)
+- [x] Windows installer and macOS dmg produced by GitHub Actions on Windows and macOS runners (Phase 5): the Windows job installs, checks Apps & features, uninstalls and checks it's gone; the macOS job mounts each dmg
 - [x] README updated
 - [x] Tests: reports, dashboard, production board, garment order, CSV; E2E for dashboard, board, garment order, reports, palette and Ctrl+P
 
 ### Phase 5: Separations (see `docs/BUILD_PROMPT.md` §6A)
-- [ ] Spike: paper.js boolean/offset ops headless in main (or a hidden window if paper needs a DOM)
-- [ ] SVG import (paths, basic shapes, transforms, `<use>`, CSS/presentation fills, strokes → outlines)
-- [ ] PDF/.AI import via pdf.js operator list → paths (licensing check passed: Apache-2.0)
-- [ ] EPS only if Inkscape/Ghostscript is detected on the machine; otherwise a clear re-save message
-- [ ] Warnings: embedded raster (with areas), live text / missing fonts, mostly-raster files
-- [ ] Preview on checkerboard + garment color background
-- [ ] Color detection with swatch, hex, % coverage
-- [ ] Merge by tolerance (ΔE slider) + manual drag merge; drop colors; ink library mapping
-- [ ] Ink order (drag), default light → dark, underbase first
-- [ ] Knockout by default, per-color overprint
-- [ ] Trap spread on top colors
-- [ ] Underbase = union − exclusions, choked; optional highlight white
-- [ ] Halftones for gradients/tints (beta): LPI, dot shape, angle
-- [ ] Preview toggles: per plate, composite, film view
-- [ ] Film PDF: 100% size, page sizes, oversize warning, solid K, reg/center marks, label, mirror, invert, fill bar, multi-page or per-plate, PNG at DPI
-- [ ] Save films to attachments, link to imprint; auto-fill colors/underbase with "from separations" badge; feeds screen fee
-- [ ] Film thumbnails on job detail and production views
-- [ ] Tests + fixtures (1-color text, 3-color overlap, thin strokes, gradient, dark-garment underbase); 100% scale check
-
----
+- [x] Geometry: paper.js (MIT) core build in the renderer and under jsdom in tests; paperjs-offset (MIT) for spread/choke and stroke outlines
+- [x] SVG import at physical size (width/height units → points; size override), groups, transforms, clip paths, `<use>`, CSS fills; strokes → outlines
+- [x] PDF and PDF-compatible .ai import via pdf.js (Apache-2.0): paths, colors, strokes, transforms, clips, transparency; non-PDF-compatible .ai explained
+- [x] EPS only through the user's own Inkscape or Ghostscript if installed (detected on PATH and in standard folders); otherwise a clear re-save message
+- [x] Warnings: embedded raster (with positions), "mostly raster" refusal, live text / fonts, filters, masks, patterns, PDF shadings
+- [x] Preview on a checkerboard or garment color; color detection with swatch, hex and % coverage of visible area
+- [x] Merge by ΔE tolerance + manual merge-into; drop colors (still knock out); ink assignment from the ink library (auto-matched)
+- [x] Print order by drag or arrows; default lightest to darkest, underbase first
+- [x] Knockout by default, per-color overprint
+- [x] Trap: spread colors printed after the first
+- [x] Underbase = union of printed colors minus exclusions, choked; optional highlight white printed last; garment change re-applies drop/underbase defaults
+- [x] Halftones for gradients and tints (beta): LPI, angle, round/elliptical dots
+- [x] Preview: per-plate toggles, composite on garment, film view with marks
+- [x] Film output: one page per screen at exactly 100% (verified by measurement), Letter/Tabloid/13×19/custom, page and max-print-area warnings, solid black, registration and center marks, label (job, number, ink/PMS, n of N, location, date), mirror, invert, fill bar; one multi-page PDF, one PDF per screen, or thresholded PNGs (720 dpi default, capped for huge pages)
+- [x] Films and a preview thumbnail saved to the job's attachments; link to an imprint fills colors and underbase with a "From separations" badge; screen fee follows
+- [x] Film thumbnails on the job's attachments and production board cards
+- [x] Tests: detection, merge, knockout, overprint, drop, spread, underbase union + choke, highlight white, halftone, film 100% scale/page/mirror/invert, PDF import, garment change, jobs + linking; fixtures for 1-color text, 3-color overlap, thin strokes, gradient, dark garment; E2E open → merge → garment → export PDF/PNG → link
+- [x] Installer builds on GitHub Actions (Windows/macOS/Linux), install + uninstall checked; uninstaller asks before deleting data
 
 ## 7. Open questions / risks
 

@@ -1,4 +1,4 @@
-import { BarChart3, Calculator, Factory, FileText, LayoutDashboard, Receipt, Search, Settings, Shirt, Users } from 'lucide-react'
+import { BarChart3, Calculator, Factory, FileText, Layers, LayoutDashboard, Receipt, Search, Settings, Shirt, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import type { SearchResult } from '@shared/ipc'
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/quotes', label: 'Quotes', icon: FileText },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/production', label: 'Production', icon: Factory },
+  { to: '/separations', label: 'Separations', icon: Layers },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/catalog', label: 'Catalog', icon: Shirt },
   { to: '/pricing', label: 'Pricing', icon: Calculator },

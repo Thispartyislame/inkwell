@@ -246,3 +246,16 @@ export function buildPlates(art: Art, s: SeparationSettings): PlateResult {
   return { plates, warnings }
 }
 
+
+/**
+ * Change the garment color and re-apply its defaults: colors matching the old garment print
+ * again, colors matching the new one drop out (the shirt shows through), and the underbase is
+ * on for dark garments. Other choices are kept.
+ */
+export function withGarment(s: SeparationSettings, colors: DetectedColor[], hex: string): SeparationSettings {
+  const matches = (c: DetectedColor | undefined, g: string) => !!c && c.tone === 'solid' && deltaE(c.hex, g) < 6
+  const byKey = new Map(colors.map((c) => [c.key, c]))
+  const kept = s.dropped.filter((k) => !matches(byKey.get(k), s.garment_hex))
+  const add = colors.filter((c) => !s.merge[c.key] && matches(c, hex) && !kept.includes(c.key)).map((c) => c.key)
+  return { ...s, garment_hex: hex, dropped: [...kept, ...add], underbase: { ...s.underbase, enabled: lightness(hex) < 50 } }
+}

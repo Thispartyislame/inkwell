@@ -4,11 +4,11 @@ A local-first desktop app for screen printing and custom apparel shops: build ac
 fast, turn approved quotes into invoices, track payments, and send professional PDFs. Everything
 stays on your computer and works without an internet connection.
 
-**Status:** Phases 1–4 of 5 are done: setup wizard, customers, garment catalog with CSV
+**Status:** all five phases are built: setup wizard, customers, garment catalog with CSV
 import, pricing matrices and rules (including margin-based markup), the quote builder with live
 pricing, revisions and PDFs, invoices with deposits, payments, receipts and email, the
-dashboard, reports with CSV export, the production board, the combined garment order list, and
-installer configuration. Spot-color separations are Phase 5. See
+dashboard, reports, the production board, the combined garment order list, spot-color
+separations with film output, and installers for Windows and macOS. See
 [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
 
 ## Everyday shortcuts
@@ -26,6 +26,28 @@ Approving a quote puts the job on **Production** at "Awaiting art"; drag cards a
 job moves (the stage follows the job onto its invoice). **Garment order list** combines the
 blanks for the jobs you pick into one order per supplier, by style, color and size, with an
 estimated cost. Export it as CSV or PDF for your distributor, then **Mark as ordered**.
+
+## Separations (film positives)
+
+**Separations → Open artwork** (or the layers button on an SVG/PDF/AI file under a quote's
+*Mockups & artwork*). Inkwell reads the vector art, lists every color with how much of the
+design it covers, and builds one film per screen:
+
+1. Pick the **garment color**. Colors that match the shirt drop out, and dark garments get a
+   white **underbase** (choked so it doesn't peek out).
+2. **Merge** near-identical colors (tolerance slider) or merge by hand; mark colors **Don't
+   print**; assign inks from your ink library.
+3. Set the **print order** (drag), **overprint** colors that should print on top, and a
+   **trap** spread.
+4. Gradients and see-through fills become **halftones** (beta: check the film).
+5. Check the **composite** and **film view**, then **Save films PDF** (one page per screen,
+   100% size, registration and center marks, label), one PDF per screen, or PNGs.
+6. **Link to imprint** sets that imprint's color count and underbase (with a "From
+   separations" badge), so the screen fee is right.
+
+Works from **spot-color vector art**. Live text must be outlined first, embedded photos are
+left off (and mostly-photo art is refused), and EPS needs Inkscape or Ghostscript installed.
+Process / CMYK separations from photos are out of scope.
 
 ## Reports
 
@@ -84,7 +106,28 @@ On a Linux machine without a display, run the end-to-end tests under Xvfb:
 skipped when none is available. To include it on headless Linux, run inside a session with
 GNOME Keyring: `dbus-run-session -- sh -c 'echo -n pw | gnome-keyring-daemon --unlock --components=secrets; XDG_CURRENT_DESKTOP=GNOME xvfb-run -a npm run test:e2e'`.
 
-## Build installers
+## Installers
+
+**Automatic builds:** GitHub Actions builds the Windows installer, the macOS disk images
+(Intel and Apple silicon) and a Linux AppImage. Every build also runs the type checks and
+tests, installs and uninstalls the Windows app to prove both work, and mounts the macOS
+images.
+
+- **Any time:** on GitHub, open **Actions → Build installers → Run workflow**. The installers
+  are attached to the run under *Artifacts*.
+- **A release:** push a version tag (`git tag v0.5.0 && git push origin v0.5.0`). The same
+  build runs and publishes a GitHub Release with the installers attached.
+
+**Uninstalling**
+
+- **Windows:** Settings → Apps → Inkwell → Uninstall (or Start menu → Inkwell → Uninstall).
+  It asks whether to also delete your data in `%APPDATA%\Inkwell`; the answer is No unless
+  you choose Yes, so reinstalling picks up where you left off.
+- **macOS:** drag Inkwell from Applications to the Trash. Your data stays in
+  `~/Library/Application Support/Inkwell`; delete that folder too to remove everything.
+- **Linux:** delete the AppImage; data is in `~/.config/Inkwell`.
+
+### Building by hand
 
 Build each installer on its own operating system:
 

@@ -1,7 +1,7 @@
 {
   "name": "inkwell",
   "productName": "Inkwell",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Local quote and invoice app for screen printing shops",
   "private": true,
   "main": "./out/main/index.js",

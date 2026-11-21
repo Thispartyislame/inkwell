@@ -22,6 +22,8 @@ import { useNewInvoice } from '../features/invoices/InvoicesList'
 import { ProductionBoard } from '../features/production/Board'
 import { GarmentOrderPage } from '../features/production/GarmentOrder'
 import { ReportsPage } from '../features/reports/Reports'
+import { SeparationEditorPage } from '../features/separations/SeparationEditor'
+import { SeparationsList } from '../features/separations/SeparationsList'
 import { QuoteBuilderPage } from '../features/quotes/QuoteBuilder'
 import { QuotesList, useNewQuote } from '../features/quotes/QuotesList'
 
@@ -73,6 +75,8 @@ export function App() {
           <Route path="invoices/:id" element={<InvoicePage />} />
           <Route path="production" element={<ProductionBoard />} />
           <Route path="production/garment-order" element={<GarmentOrderPage />} />
+          <Route path="separations" element={<SeparationsList />} />
+          <Route path="separations/:id" element={<SeparationEditorPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/:tab" element={<ReportsPage />} />
           <Route path="customers" element={<CustomersList />} />

@@ -16,7 +16,14 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
-    resolve: { alias: { ...shared, '@': resolve(__dirname, 'src/renderer/src') } },
+    resolve: {
+      alias: [
+        ...Object.entries({ ...shared, '@': resolve(__dirname, 'src/renderer/src') }).map(([find, replacement]) => ({ find, replacement })),
+        // paper.js core build: no PaperScript compiler, so no eval (blocked by the app's CSP).
+        // paperjs-offset imports 'paper' too, so both share this one copy.
+        { find: /^paper$/, replacement: resolve(__dirname, 'node_modules/paper/dist/paper-core.js') }
+      ]
+    },
     plugins: [react(), tailwindcss()],
     build: { rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html'), pdf: resolve(__dirname, 'src/renderer/pdf.html') } } }
   }

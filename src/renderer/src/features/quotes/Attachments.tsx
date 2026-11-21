@@ -1,4 +1,5 @@
-import { FileImage, FolderOpen, Paperclip, Trash2, Upload } from 'lucide-react'
+import { FileImage, FolderOpen, Layers, Paperclip, Trash2, Upload } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import { useState } from 'react'
 import { IMAGE_MIME } from '@shared/files'
 import type { Attachment } from '@shared/schemas'
@@ -8,6 +9,7 @@ import { api, fileUrl } from '../../lib/api'
 
 export function AttachmentsCard({ ownerType, ownerId, attachments, editable, onChanged }: { ownerType: 'quote' | 'invoice'; ownerId: number; attachments: Attachment[]; editable: boolean; onChanged: () => void }) {
   const run = useAsync()
+  const navigate = useNavigate()
   const [over, setOver] = useState(false)
   const [deleting, setDeleting] = useState<Attachment | null>(null)
 
@@ -69,6 +71,11 @@ export function AttachmentsCard({ ownerType, ownerId, attachments, editable, onC
                       <span className="text-slate-500">{a.kind === 'artwork' ? 'Artwork' : a.kind}</span>
                     )}
                     <span className="flex">
+                      {/\.(svg|pdf|ai|eps)$/i.test(a.original_name) && a.kind !== 'film' && (
+                        <Button size="sm" variant="ghost" title="Make spot-color separations from this art" aria-label={`Separate ${a.original_name}`} onClick={() => run(async () => navigate(`/separations/${(await api.separations.fromAttachment(a.id)).id}`))}>
+                          <Layers className="size-3.5" />
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" title="Show in folder" aria-label="Show in folder" onClick={() => run(() => api.app.revealAttachment(a.id))}>
                         <FolderOpen className="size-3.5" />
                       </Button>
