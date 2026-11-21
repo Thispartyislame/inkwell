@@ -10,7 +10,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": ".",
-    "paths": { "@shared/*": ["src/shared/*"], "@/*": ["src/renderer/src/*"] }
+    "paths": { "@shared/*": ["./src/shared/*"], "@/*": ["./src/renderer/src/*"] }
   }
 }

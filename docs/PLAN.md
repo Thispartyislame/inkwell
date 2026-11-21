@@ -141,13 +141,11 @@ cost_base_cents (S–XL), cost_2xl_cents, cost_3xl_cents, cost_4xl_plus_cents, n
 Unique (brand, style_number) among non-archived rows.
 
 **pricing_matrices**: name, method (`screen` | `embroidery` | `dtf` | `transfer` | `other`),
-is_sample, above_max_rule (`use_last` | `per_extra_color` | `not_allowed`),
-above_max_adder_cents, notes.
-**pricing_matrix_breaks**: matrix_id, min_qty (row header). **pricing_matrix_columns**:
-matrix_id, colors (1..N; for embroidery the column is a stitch-count band `max_stitches`; for
-DTF a size band). **pricing_matrix_cells**: break_id, column_id, price_cents.
-(Normalized so add/remove rows and columns are simple inserts/deletes; the grid editor reads a
-denormalized view.)
+column_kind (`colors` | `stitches` | `size`), breaks (JSON, ascending min quantities),
+columns (JSON `[{value, label}]`), prices (JSON `[row][col]` cents), above_max_rule
+(`use_last` | `per_extra_color` | `not_allowed`), above_max_adder_cents, is_default (one per
+method), is_sample, notes. (Stored as JSON because the grid is always edited and read whole;
+see DECISIONS 14.)
 
 **pricing_rules** (one row per rule set; `id = 1` is active; room for tiers later):
 markup_mode (`percent` | `multiplier`), markup_tiers (JSON `[{up_to_cost_cents, value}]`),
@@ -305,23 +303,23 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 ## 6. Feature checklist
 
 ### Phase 1: Foundation, customers, catalog, settings
-- [ ] Project scaffold (electron-vite, React, TS, Tailwind, lint, Vitest, Playwright)
-- [ ] `src/shared/money.ts` + tests
-- [ ] Migration runner + `001_init.sql` (all tables in §3, so later phases don't churn the core schema)
-- [ ] Typed IPC contract, preload bridge, main registration
-- [ ] App shell: sidebar (Dashboard, Quotes, Invoices, Customers, Catalog, Pricing, Settings), top search bar, light/dark mode
-- [ ] First-run setup wizard: shop info, logo upload, tax rate, numbering prefixes/start numbers, default terms
-- [ ] Seed sample matrices, rules, fee presets, inks (labeled "Sample: edit these to match your pricing")
-- [ ] Customers: list with search/filter/sort, create/edit/archive/restore, contacts, tax-exempt fields + cert upload + expiry
-- [ ] Customer detail: quotes, invoices, balance owed, exempt status (lists empty until Ph. 2/3, but wired)
-- [ ] Garment catalog: CRUD, colors (with dark flag), sizes, size-group costs, supplier, duplicate, archive
-- [ ] CSV import with column mapping (brand, style, name, color, sizes, cost) + preview + merge by brand/style
-- [ ] Pricing: matrix list, grid editor (add/remove breaks and color columns, inline cells, above-max rule)
-- [ ] Pricing rules form; fee presets CRUD
-- [ ] Settings page covering every `settings` field (SMTP password via safeStorage)
-- [ ] Daily auto-backup (keep 30), Backup now, Restore from backup
-- [ ] Tests: money, migrations on fresh DB, numbering allocation, CSV mapping, backup rotation
-- [ ] E2E smoke: launch, complete wizard, create customer, create garment
+- [x] Project scaffold (electron-vite, React, TS, Tailwind, Vitest, Playwright)
+- [x] `src/shared/money.ts` + tests
+- [x] Migration runner + `001_init.sql` (Phase 1 tables; later phases add their own migrations, see DECISIONS 15)
+- [x] Typed IPC contract, preload bridge, main registration
+- [x] App shell: sidebar (Dashboard, Quotes, Invoices, Customers, Catalog, Pricing, Settings), top search bar, light/dark mode
+- [x] First-run setup wizard: shop info, logo upload, tax rate, numbering prefixes/start numbers, default terms
+- [x] Seed sample matrices, rules, fee presets, inks, 3 garments (labeled "Sample: edit these to match your pricing")
+- [x] Customers: list with search/filter/sort, create/edit/archive/restore, contacts, tax-exempt fields + cert upload + expiry
+- [x] Customer detail: quotes, invoices, balance owed, exempt status (quote/invoice lists fill in with Ph. 2/3)
+- [x] Garment catalog: CRUD, colors (with dark flag), sizes, size-group costs, supplier, duplicate, archive
+- [x] CSV import with column mapping (brand, style, name, color, sizes, cost) + preview + merge/skip existing
+- [x] Pricing: matrix list, grid editor (add/remove breaks and columns, inline cells, above-max rule)
+- [x] Pricing rules form; fee presets CRUD; ink library CRUD
+- [x] Settings page covering every `settings` field (SMTP password via safeStorage)
+- [x] Daily auto-backup (keep 30), Backup now, Restore from backup (list or file)
+- [x] Tests: money, migrations, numbering allocation, customers/garments/pricing repos, CSV mapping, backup rotation/validation/restore, garment markup
+- [x] E2E smoke: launch, complete wizard, create customer + contact, search, create/duplicate garment, edit matrix, backup
 
 ### Phase 2: Quote builder and PDF
 - [ ] Pricing engine (§4) with the full test list
