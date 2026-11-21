@@ -12,7 +12,10 @@ import { exemptStatus } from './exempt'
 import { QuoteStatusBadge } from '../quotes/status'
 import { useNewQuote } from '../quotes/QuotesList'
 import type { QuoteStatus } from '@shared/quote'
-import { formatDate } from '@shared/dates'
+import { formatDate, todayIso } from '@shared/dates'
+import { invoiceDisplayStatus, PAYMENT_METHOD_LABELS, type InvoiceStatus } from '@shared/invoice'
+import { InvoiceStatusBadge } from '../invoices/status'
+import { useNewInvoice } from '../invoices/InvoicesList'
 
 function address(c: Customer, kind: 'billing' | 'shipping') {
   const k = (s: string) => c[`${kind}_${s}` as keyof Customer] as string
@@ -75,6 +78,7 @@ export function CustomerDetailPage() {
   const [deleting, setDeleting] = useState<Contact | null>(null)
   const [archiving, setArchiving] = useState(false)
   const newQuote = useNewQuote()
+  const newInvoice = useNewInvoice()
 
   if (isLoading) return <Loading />
   if (error || !data) return <EmptyState title="Customer not found" action={<Button onClick={() => navigate('/customers')}>Back to customers</Button>} />
@@ -149,7 +153,7 @@ export function CustomerDetailPage() {
           >
             {data.quotes.length === 0 ? (
               <p className="flex items-center gap-2 text-sm text-slate-500">
-                <FileText className="size-4" /> No quotes yet. Invoices arrive in Phase 3.
+                <FileText className="size-4" /> No quotes yet.
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -167,6 +171,50 @@ export function CustomerDetailPage() {
               </ul>
             )}
           </Card>
+
+          <Card
+            title="Invoices"
+            actions={
+              <Button size="sm" icon={<Plus className="size-3.5" />} onClick={() => newInvoice(id)} disabled={!!c.archived_at}>
+                New invoice
+              </Button>
+            }
+          >
+            {data.invoices.length === 0 ? (
+              <p className="text-sm text-slate-500">No invoices yet. Convert an approved quote, or start a blank invoice.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {data.invoices.map((i) => (
+                  <li key={i.id}>
+                    <Link to={`/invoices/${i.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <span className="w-28 font-medium">{i.number}</span>
+                      <span className="min-w-0 flex-1 truncate text-slate-600 dark:text-slate-400">{i.job_name}</span>
+                      <InvoiceStatusBadge status={invoiceDisplayStatus({ status: i.status as InvoiceStatus, due_on: i.due_on, balance_cents: i.balance_cents }, todayIso())} />
+                      <span className="w-24 text-right tabular">{formatMoney(i.total_cents)}</span>
+                      <span className="w-24 text-right font-medium tabular">{i.status === 'void' ? '–' : formatMoney(i.balance_cents)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {data.payments.length > 0 && (
+            <Card title="Payments received" bodyClassName="p-0">
+              <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+                {data.payments.map((p) => (
+                  <li key={p.id} className="flex items-center gap-3 px-4 py-2">
+                    <span className="w-28 text-xs text-slate-500">{formatDate(p.received_on)}</span>
+                    <span className="flex-1">
+                      {PAYMENT_METHOD_LABELS[p.method]}
+                      {p.check_number ? ` #${p.check_number}` : ''} <span className="text-slate-500">· {p.applied_to} · {p.receipt_number}</span>
+                    </span>
+                    <span className="font-medium tabular">{formatMoney(p.amount_cents)}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           <Card
             title="Contacts"

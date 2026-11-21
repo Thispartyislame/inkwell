@@ -15,6 +15,8 @@ import { fromRow, insert, likePattern, now, toRow, update } from '../rows'
 import { listActivity, logActivity } from './activity'
 import { findAttachment } from './attachments'
 import { customerQuoteStats, listQuotes } from './quotes'
+import { customerInvoiceStats, listInvoices } from './invoices'
+import { listPayments } from './payments'
 
 const SPEC = { bool: ['shipping_same_as_billing', 'tax_exempt'], json: ['tags'] } as const
 
@@ -53,9 +55,10 @@ export function listCustomers(db: Database.Database, f: CustomerFilter = {}): Cu
   })
 }
 
-/** Quote/invoice counts and balance. Invoices (and so balances) arrive in Phase 3. */
+/** Quote/invoice counts and the balance owed. */
 export function customerStats(db: Database.Database, customerId: number): Pick<CustomerListRow, 'quote_count' | 'invoice_count' | 'balance_cents'> {
-  return { quote_count: customerQuoteStats(db, customerId).count, invoice_count: 0, balance_cents: 0 }
+  const inv = customerInvoiceStats(db, customerId)
+  return { quote_count: customerQuoteStats(db, customerId).count, invoice_count: inv.count, balance_cents: inv.balance_cents }
 }
 
 export function getCustomerDetail(db: Database.Database, id: number): CustomerDetail {
@@ -65,7 +68,8 @@ export function getCustomerDetail(db: Database.Database, id: number): CustomerDe
     contacts: listContacts(db, id),
     certAttachment: findAttachment(db, customer.exempt_cert_attachment_id),
     quotes: listQuotes(db, { customer_id: id }).map((q) => ({ id: q.id, number: q.number, job_name: q.job_name, status: q.status, total_cents: q.total_cents, issued_on: q.issued_on })),
-    invoices: [],
+    invoices: listInvoices(db, { customer_id: id }).map((i) => ({ id: i.id, number: i.number, job_name: i.job_name, status: i.status, total_cents: i.total_cents, balance_cents: i.balance_cents, issued_on: i.issued_on, due_on: i.due_on })),
+    payments: listPayments(db, { customer_id: id }),
     balance_cents: customerStats(db, id).balance_cents,
     activity: listActivity(db, 'customer', id)
   }

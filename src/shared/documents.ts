@@ -9,6 +9,7 @@ import { imprintSummary } from './pricing/engine'
 import type { QuoteBreakdown } from './pricing/types'
 import { garmentTitle, sizeBreakdown, toImprintInput, type QuoteCustomerSummary, type QuoteRecord } from './quote'
 import type { Settings } from './schemas'
+import { PAYMENT_METHOD_LABELS, type InvoiceRecord, type Payment } from './invoice'
 import { SIZE_GROUP_LABELS } from './sizes'
 
 export interface DocLine {
@@ -36,7 +37,7 @@ export interface DocImage {
 }
 
 export interface CustomerDocument {
-  type: 'quote'
+  type: 'quote' | 'invoice' | 'receipt'
   title: string
   number: string
   accent: string
@@ -51,6 +52,10 @@ export interface CustomerDocument {
   callout: { label: string; amount: string } | null
   notes: string
   images: DocImage[]
+  /** how to pay (invoices with a balance) */
+  how_to_pay: string
+  /** receipts: a short statement instead of line items */
+  receipt: { heading: string; rows: { label: string; value: string }[] } | null
   terms: string
   footer: string
   signature: boolean
@@ -78,11 +83,19 @@ export interface QuoteDocInput {
   images: DocImage[]
   /** matrix column labels for DTF/transfer imprints, by imprint uid */
   column_labels?: Record<string, string>
+  /** deposits received on the quote */
+  payments?: Payment[]
 }
 
-export function quoteDocument({ quote: q, customer, breakdown: b, settings: s, logo_url, images, column_labels = {} }: QuoteDocInput): CustomerDocument {
-  const money = (c: number) => formatMoney(c, s.currency)
-  const lines: DocLine[] = q.lines
+/** Line items, fees and totals shared by quotes and invoices. */
+function pricedBody(
+  doc: { lines: QuoteRecord['lines']; discount_mode: QuoteRecord['discount_mode']; discount_value: number },
+  b: QuoteBreakdown,
+  customer: QuoteCustomerSummary | null,
+  money: (c: number) => string,
+  column_labels: Record<string, string>
+): Pick<CustomerDocument, 'lines' | 'fees' | 'totals'> {
+  const lines: DocLine[] = doc.lines
     .map((l, i) => ({ l, lb: b.lines[i] }))
     .filter(({ lb }) => lb && lb.qty > 0)
     .map(({ l, lb }) => {
@@ -105,12 +118,35 @@ export function quoteDocument({ quote: q, customer, breakdown: b, settings: s, l
     .map((f) => ({ name: f.name, detail: !f.auto && f.quantity !== 1 ? `${f.quantity} × ${money(f.unit_cents)}` : '', amount: money(f.amount_cents) }))
 
   const totals: DocAmount[] = [{ label: 'Subtotal', amount: money(b.subtotal_cents) }]
-  if (b.discount_cents) totals.push({ label: q.discount_mode === 'percent' ? `Discount (${bpToPercentString(q.discount_value)}%)` : 'Discount', amount: `−${money(b.discount_cents)}` })
+  if (b.discount_cents) totals.push({ label: doc.discount_mode === 'percent' ? `Discount (${bpToPercentString(doc.discount_value)}%)` : 'Discount', amount: `−${money(b.discount_cents)}` })
   if (b.rush_cents) totals.push({ label: b.fees.find((f) => f.kind === 'rush')?.name ?? 'Rush', amount: money(b.rush_cents) })
   if (b.tax_exempt_applied) totals.push({ label: `Sales tax (exempt${customer?.exempt_cert_number ? `, cert. ${customer.exempt_cert_number}` : ''})`, amount: money(0), muted: true })
   else if (b.tax_bp || b.tax_cents) totals.push({ label: `Sales tax (${bpToPercentString(b.tax_bp)}%)`, amount: money(b.tax_cents) })
   for (const f of b.fees.filter((x) => x.kind === 'shipping')) totals.push({ label: f.name, amount: money(f.amount_cents) })
   totals.push({ label: 'Total', amount: money(b.total_cents), strong: true })
+  return { lines, fees, totals }
+}
+
+function header(s: Settings, logo_url: string) {
+  return { accent: s.accent_color, shop: { name: s.shop_name, logo_url, lines: shopLines(s) }, footer: s.pdf_footer_text }
+}
+
+function parties(customer: QuoteCustomerSummary | null) {
+  return {
+    bill_to: party(customer, customer?.billing ?? []),
+    ship_to: customer && customer.shipping.join('|') !== customer.billing.join('|') ? party(customer, customer.shipping) : []
+  }
+}
+
+const paymentLabel = (p: Pick<Payment, 'received_on' | 'method' | 'check_number' | 'is_deposit'>) =>
+  `${p.is_deposit ? 'Deposit' : 'Payment'} ${formatDate(p.received_on)} · ${PAYMENT_METHOD_LABELS[p.method]}${p.method === 'check' && p.check_number ? ` #${p.check_number}` : ''}`
+
+export function quoteDocument({ quote: q, customer, breakdown: b, settings: s, logo_url, images, column_labels = {}, payments = [] }: QuoteDocInput): CustomerDocument {
+  const money = (c: number) => formatMoney(c, s.currency)
+  const body = pricedBody(q, b, customer, money, column_labels)
+  const live = payments.filter((p) => !p.voided_at)
+  for (const p of live) body.totals.push({ label: paymentLabel(p), amount: `−${money(p.amount_cents)}`, muted: true })
+  if (live.length) body.totals.push({ label: 'Balance', amount: money(b.balance_cents), strong: true })
 
   const meta = [
     { label: 'Date', value: formatDate(q.issued_on) },
@@ -125,21 +161,117 @@ export function quoteDocument({ quote: q, customer, breakdown: b, settings: s, l
     type: 'quote',
     title: 'Quote',
     number: q.number,
-    accent: s.accent_color,
-    shop: { name: s.shop_name, logo_url, lines: shopLines(s) },
+    ...header(s, logo_url),
     meta,
-    bill_to: party(customer, customer?.billing ?? []),
-    ship_to: customer && customer.shipping.join('|') !== customer.billing.join('|') ? party(customer, customer.shipping) : [],
+    ...parties(customer),
     job_name: q.job_name,
-    lines,
-    fees,
-    totals,
-    callout: b.deposit_cents > 0 ? { label: `Deposit to start (${bpToPercentString(q.deposit_bp)}%)`, amount: money(b.deposit_cents) } : null,
+    ...body,
+    callout: live.length ? null : b.deposit_cents > 0 ? { label: `Deposit to start (${bpToPercentString(q.deposit_bp)}%)`, amount: money(b.deposit_cents) } : null,
     notes: q.customer_notes,
     images,
+    how_to_pay: '',
+    receipt: null,
     terms: s.terms_text,
-    footer: s.pdf_footer_text,
     signature: q.status !== 'approved',
     stamp
+  }
+}
+
+export interface InvoiceDocInput {
+  invoice: InvoiceRecord
+  customer: QuoteCustomerSummary | null
+  breakdown: QuoteBreakdown
+  settings: Settings
+  logo_url: string
+  images: DocImage[]
+  payments: Payment[]
+  source_quote_number: string | null
+  column_labels?: Record<string, string>
+}
+
+export function invoiceDocument({ invoice: inv, customer, breakdown: b, settings: s, logo_url, images, payments, source_quote_number, column_labels = {} }: InvoiceDocInput): CustomerDocument {
+  const money = (c: number) => formatMoney(c, s.currency)
+  const body = pricedBody(inv, b, customer, money, column_labels)
+  const live = payments.filter((p) => !p.voided_at)
+  for (const p of live) body.totals.push({ label: paymentLabel(p), amount: `−${money(p.amount_cents)}`, muted: true })
+  const balance = inv.total_cents - live.reduce((t, p) => t + p.amount_cents, 0)
+  if (live.length) body.totals.push({ label: balance < 0 ? 'Credit' : 'Balance due', amount: money(Math.abs(balance)), strong: true })
+
+  const meta = [
+    { label: 'Invoice date', value: formatDate(inv.issued_on) },
+    { label: 'Due date', value: formatDate(inv.due_on) },
+    { label: 'Terms', value: inv.payment_terms },
+    { label: 'PO number', value: inv.po_number },
+    { label: 'Quote', value: source_quote_number ?? '' },
+    { label: 'In-hands date', value: formatDate(inv.in_hands_on) }
+  ].filter((m) => m.value)
+
+  const paid = inv.status !== 'void' && inv.total_cents > 0 && balance <= 0
+  return {
+    type: 'invoice',
+    title: 'Invoice',
+    number: inv.number,
+    ...header(s, logo_url),
+    meta,
+    ...parties(customer),
+    job_name: inv.job_name,
+    ...body,
+    callout: inv.status === 'void' ? null : paid ? { label: 'Paid in full', amount: money(inv.total_cents) } : { label: `Balance due${inv.due_on ? ` by ${formatDate(inv.due_on)}` : ''}`, amount: money(balance) },
+    notes: inv.customer_notes,
+    images,
+    how_to_pay: paid || inv.status === 'void' ? '' : s.how_to_pay_text,
+    receipt: null,
+    terms: '',
+    signature: false,
+    stamp: inv.status === 'void' ? 'VOID' : paid ? 'PAID' : ''
+  }
+}
+
+export interface ReceiptDocInput {
+  payment: Payment
+  customer: QuoteCustomerSummary | null
+  settings: Settings
+  logo_url: string
+  /** the invoice (or quote, for a deposit) it was applied to */
+  applied: { kind: 'invoice' | 'quote'; number: string; job_name: string; total_cents: number; paid_cents: number }
+}
+
+export function receiptDocument({ payment: p, customer, settings: s, logo_url, applied }: ReceiptDocInput): CustomerDocument {
+  const money = (c: number) => formatMoney(c, s.currency)
+  const balance = applied.total_cents - applied.paid_cents
+  return {
+    type: 'receipt',
+    title: 'Receipt',
+    number: p.receipt_number,
+    ...header(s, logo_url),
+    meta: [
+      { label: 'Date received', value: formatDate(p.received_on) },
+      { label: 'Method', value: PAYMENT_METHOD_LABELS[p.method] + (p.method === 'check' && p.check_number ? ` #${p.check_number}` : '') },
+      { label: 'Reference', value: p.reference }
+    ].filter((m) => m.value),
+    bill_to: party(customer, customer?.billing ?? []),
+    ship_to: [],
+    job_name: applied.job_name,
+    lines: [],
+    fees: [],
+    totals: [
+      { label: `${applied.kind === 'invoice' ? 'Invoice' : 'Quote'} ${applied.number} total`, amount: money(applied.total_cents) },
+      { label: 'Paid to date', amount: money(applied.paid_cents) },
+      { label: balance < 0 ? 'Credit' : 'Balance remaining', amount: money(Math.abs(balance)), strong: true }
+    ],
+    callout: { label: 'Amount received', amount: money(p.amount_cents) },
+    notes: p.note,
+    images: [],
+    how_to_pay: '',
+    receipt: {
+      heading: p.voided_at ? 'This payment was voided' : 'Thank you for your payment',
+      rows: [
+        { label: p.is_deposit ? 'Deposit for' : 'Payment for', value: `${applied.kind === 'invoice' ? 'Invoice' : 'Quote'} ${applied.number}${applied.job_name ? ` · ${applied.job_name}` : ''}` },
+        { label: 'Amount received', value: money(p.amount_cents) }
+      ]
+    },
+    terms: '',
+    signature: false,
+    stamp: p.voided_at ? 'VOID' : ''
   }
 }

@@ -54,7 +54,7 @@ function GlobalSearch() {
   }, [q])
 
   const go = (r: SearchResult) => {
-    navigate(r.kind === 'customer' ? `/customers/${r.id}` : r.kind === 'quote' ? `/quotes/${r.id}` : `/catalog/${r.id}`)
+    navigate(r.kind === 'customer' ? `/customers/${r.id}` : r.kind === 'quote' ? `/quotes/${r.id}` : r.kind === 'invoice' ? `/invoices/${r.id}` : `/catalog/${r.id}`)
     setQ('')
     setOpen(false)
     ref.current?.blur()
@@ -86,7 +86,7 @@ function GlobalSearch() {
             ref.current?.blur()
           }
         }}
-        placeholder="Search quotes, customers, garments…"
+        placeholder="Search invoices, quotes, customers, garments…"
         aria-label="Search"
         className="h-8 w-full rounded-md border border-slate-300 bg-white pr-14 pl-8 text-sm focus:border-accent focus:ring-2 focus:ring-accent/40 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
       />
@@ -108,7 +108,7 @@ function GlobalSearch() {
                   onMouseEnter={() => setActive(i)}
                   className={cx('flex cursor-pointer items-center gap-3 px-3 py-2 text-sm', i === active && 'bg-slate-100 dark:bg-slate-800')}
                 >
-                  {r.kind === 'customer' ? <Users className="size-4 text-slate-400" /> : r.kind === 'quote' ? <FileText className="size-4 text-slate-400" /> : <Shirt className="size-4 text-slate-400" />}
+                  {r.kind === 'customer' ? <Users className="size-4 text-slate-400" /> : r.kind === 'quote' ? <FileText className="size-4 text-slate-400" /> : r.kind === 'invoice' ? <Receipt className="size-4 text-slate-400" /> : <Shirt className="size-4 text-slate-400" />}
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{r.title}</span>
                     {r.subtitle && <span className="block truncate text-xs text-slate-500">{r.subtitle}</span>}

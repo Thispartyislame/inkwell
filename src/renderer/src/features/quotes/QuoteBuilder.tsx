@@ -1,17 +1,19 @@
 import * as Menu from '@radix-ui/react-dropdown-menu'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCircle2, Copy, Eye, FileDown, FileText, GitBranch, Loader2, MoreHorizontal, Plus, RefreshCw, Send, XCircle } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCircle2, Copy, Eye, FileDown, FileText, GitBranch, Loader2, Mail, MoreHorizontal, Plus, Receipt, RefreshCw, Send, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { todayIso } from '@shared/dates'
 import { formatMoney } from '@shared/money'
-import { effectiveStatus, newLine, type QuoteDetail, type QuoteEdit } from '@shared/quote'
-import { useAsync, useToast } from '../../components/toast'
-import { Button, Card, ConfirmDialog, cx, Dialog, EmptyState, Field, Input, Loading, Notice, Select, Textarea, TextField } from '../../components/ui'
+import { effectiveStatus, type QuoteDetail } from '@shared/quote'
+import { useToast } from '../../components/toast'
+import { Button, Card, cx, Dialog, EmptyState, Field, Input, Loading, Notice, Select, Textarea, TextField } from '../../components/ui'
 import { api, errorMessage } from '../../lib/api'
 import { useInvalidate } from '../../lib/queries'
 import { AttachmentsCard } from './Attachments'
-import { cloneLine, LineItemCard } from './LineItemCard'
+import { EmailDialog } from '../documents/EmailDialog'
+import { PaymentDialog, PaymentsCard } from '../documents/Payments'
+import { LineItemsEditor } from './LineItemsEditor'
 import { CustomerPicker } from './pickers'
 import { PreviewDialog } from './PreviewDialog'
 import { FeesCard, TotalsCard } from './QuoteSidebar'
@@ -65,7 +67,6 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
   const { detail, edit, update, breakdown, save, flush, editable } = useQuoteEditor(initial)
   const q = detail.quote
   const navigate = useNavigate()
-  const run = useAsync()
   const toast = useToast()
   const invalidate = useInvalidate()
   const [preview, setPreview] = useState(false)
@@ -73,8 +74,11 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
   const [declining, setDeclining] = useState(false)
   const [approver, setApprover] = useState('')
   const [reason, setReason] = useState('')
-  const [removing, setRemoving] = useState<number | null>(null)
   const [busy, setBusy] = useState('')
+  const [emailing, setEmailing] = useState(false)
+  const [depositing, setDepositing] = useState(false)
+  const canDeposit = ['draft', 'sent', 'approved', 'expired'].includes(q.status) && !q.converted_invoice_id && !q.archived_at && !!q.customer_id
+  const reload = async () => onReload(await api.quotes.get(q.id))
   const status = effectiveStatus(q, todayIso())
   const customerName = detail.customer && edit.customer_id === detail.customer.id ? detail.customer.display_name : edit.customer_id ? '…' : ''
 
@@ -92,14 +96,14 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
       setBusy('')
     }
   }
-  const goTo = async (name: string, fn: () => Promise<{ id: number; number: string }>, msg: (n: string) => string) => {
+  const goTo = async (name: string, fn: () => Promise<{ id: number; number: string }>, msg: (n: string) => string, base = '/quotes') => {
     setBusy(name)
     try {
       await flush()
       const n = await fn()
       toast.success(msg(n.number))
-      await invalidate('quotes')
-      navigate(`/quotes/${n.id}`)
+      await invalidate('quotes', 'invoices', 'customers', 'customer')
+      navigate(`${base}/${n.id}`)
     } catch (e) {
       toast.error(e)
     } finally {
@@ -107,8 +111,6 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
     }
   }
 
-  const setLines = (fn: (lines: QuoteEdit['lines']) => QuoteEdit['lines']) => update((e) => ({ ...e, lines: fn(e.lines) }))
-  const lineWarnings = (uid: string) => breakdown.warnings.filter((w) => w.line_uid === uid && w.code !== 'unit_override' && w.code !== 'no_quantity')
   const quoteWarnings = breakdown.warnings.filter((w) => !w.line_uid && w.code !== 'exempt_cert_expired')
 
   return (
@@ -135,20 +137,11 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
           <Button icon={<Eye className="size-4" />} onClick={async () => (await flush(), setPreview(true))}>
             Preview
           </Button>
-          <Button icon={<FileText className="size-4" />} busy={busy === 'open'} onClick={() => act('open', async () => void (await api.quotes.openPdf(q.id)))}>
+          <Button icon={<FileText className="size-4" />} busy={busy === 'open'} onClick={() => act('open', async () => void (await api.documents.openPdf('quote', q.id)))}>
             Open PDF
           </Button>
-          <Button
-            icon={<FileDown className="size-4" />}
-            busy={busy === 'save'}
-            onClick={() =>
-              act('save', async () => {
-                const p = await api.quotes.savePdf(q.id)
-                if (p) toast.success(`Saved ${p.split(/[\\/]/).pop()}${q.status === 'draft' ? '. Mark it as sent once you’ve sent it.' : ''}`)
-              })
-            }
-          >
-            Save PDF
+          <Button icon={<Mail className="size-4" />} onClick={async () => (await flush(), setEmailing(true))}>
+            Email
           </Button>
           {q.status === 'draft' && !q.archived_at && (
             <Button variant="primary" icon={<Send className="size-4" />} busy={busy === 'sent'} onClick={() => act('sent', () => api.quotes.markSent(q.id), `${q.number} marked as sent`)}>
@@ -158,6 +151,16 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
           {['draft', 'sent', 'expired'].includes(q.status) && !q.archived_at && (
             <Button variant={q.status === 'draft' ? 'secondary' : 'primary'} icon={<CheckCircle2 className="size-4" />} onClick={() => setApproving(true)}>
               Approve
+            </Button>
+          )}
+          {q.status === 'approved' && !q.converted_invoice_id && !q.archived_at && (
+            <Button variant="primary" icon={<Receipt className="size-4" />} busy={busy === 'convert'} onClick={() => goTo('convert', () => api.quotes.convert(q.id), (n) => `Invoice ${n} created`, '/invoices')}>
+              Convert to invoice
+            </Button>
+          )}
+          {detail.converted_invoice && (
+            <Button variant="primary" icon={<Receipt className="size-4" />} onClick={() => navigate(`/invoices/${detail.converted_invoice!.id}`)}>
+              View {detail.converted_invoice.number}
             </Button>
           )}
           {!['draft', 'superseded'].includes(q.status) && !q.converted_invoice_id && (
@@ -173,6 +176,22 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Content align="end" sideOffset={4} className="z-50 min-w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <MenuItem
+                  icon={<FileDown className="size-4" />}
+                  onSelect={() =>
+                    act('save', async () => {
+                      const p = await api.documents.savePdf('quote', q.id)
+                      if (p) toast.success(`Saved ${p.split(/[\\/]/).pop()}${q.status === 'draft' ? '. Mark it as sent once you’ve sent it.' : ''}`)
+                    })
+                  }
+                >
+                  Save PDF…
+                </MenuItem>
+                {canDeposit && (
+                  <MenuItem icon={<Plus className="size-4" />} onSelect={() => setDepositing(true)}>
+                    Record deposit
+                  </MenuItem>
+                )}
                 <MenuItem icon={<Copy className="size-4" />} onSelect={() => goTo('dup', () => api.quotes.duplicate(q.id), (n) => `Copied to ${n}`)}>
                   Duplicate quote
                 </MenuItem>
@@ -241,35 +260,7 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
             {detail.customer?.tax_exempt && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">Tax-exempt customer{detail.customer.exempt_cert_number ? ` (certificate ${detail.customer.exempt_cert_number})` : ''}.</p>}
           </Card>
 
-          {edit.lines.map((l, i) => (
-            <LineItemCard
-              key={l.uid}
-              line={l}
-              index={i}
-              count={edit.lines.length}
-              lb={breakdown.lines[i]}
-              warnings={lineWarnings(l.uid)}
-              base={detail.pricing.base}
-              customerMatrixId={detail.pricing.customer?.pricing_matrix_id ?? null}
-              onChange={(x) => setLines((ls) => ls.map((y, j) => (j === i ? x : y)))}
-              onDuplicate={() => setLines((ls) => [...ls.slice(0, i + 1), cloneLine(l), ...ls.slice(i + 1)])}
-              onRemove={() => (l.sizes.some((s) => s.qty > 0) ? setRemoving(i) : setLines((ls) => ls.filter((_, j) => j !== i)))}
-              onMove={(dir) =>
-                setLines((ls) => {
-                  const next = [...ls]
-                  ;[next[i], next[i + dir]] = [next[i + dir], next[i]]
-                  return next
-                })
-              }
-              onApplyImprintsToAll={() => {
-                setLines((ls) => ls.map((y, j) => (j === i ? y : { ...y, imprints: l.imprints.map((imp) => ({ ...cloneLine({ ...l, imprints: [imp] }).imprints[0], underbase: imp.method === 'screen' && imp.underbase_source === 'auto' ? y.is_dark : imp.underbase })) })))
-                toast.success(`Imprints copied to ${edit.lines.length - 1} other line${edit.lines.length > 2 ? 's' : ''}`)
-              }}
-            />
-          ))}
-          <Button className="self-start" icon={<Plus className="size-4" />} onClick={() => setLines((ls) => [...ls, newLine()])}>
-            Add line item
-          </Button>
+          <LineItemsEditor edit={edit} update={update} breakdown={breakdown} pricing={detail.pricing} />
 
           <FeesCard edit={edit} breakdown={breakdown} update={update} />
 
@@ -287,6 +278,17 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
           <fieldset disabled={!editable}>
             <TotalsCard edit={edit} breakdown={breakdown} defaultTaxBp={detail.pricing.base.default_tax_bp} update={update} />
           </fieldset>
+          {(detail.payments.length > 0 || canDeposit) && (
+            <PaymentsCard
+              title="Deposits"
+              payments={detail.payments}
+              balance={breakdown.balance_cents}
+              canRecord={canDeposit}
+              recordLabel="Record deposit"
+              onRecord={() => setDepositing(true)}
+              onChanged={reload}
+            />
+          )}
           {quoteWarnings.length > 0 && (
             <ul className="flex flex-col gap-1 text-xs text-amber-700 dark:text-amber-400">
               {quoteWarnings.map((w, i) => (
@@ -297,7 +299,7 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
         </div>
       </div>
 
-      <AttachmentsCard quoteId={q.id} attachments={detail.attachments} editable={editable} onChanged={async () => onReload(await api.quotes.get(q.id))} />
+      <AttachmentsCard ownerType="quote" ownerId={q.id} attachments={detail.attachments} editable={editable} onChanged={reload} />
 
       {detail.activity.length > 0 && (
         <Card title="History">
@@ -320,12 +322,25 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
         </Card>
       )}
 
-      <PreviewDialog quoteId={q.id} open={preview} onOpenChange={setPreview} version={`${q.updated_at}-${detail.breakdown.total_cents}-${detail.attachments.length}`} />
+      <EmailDialog kind="quote" id={q.id} open={emailing} onOpenChange={setEmailing} onDone={reload} canMarkSent={q.status === 'draft'} />
+      {depositing && (
+        <PaymentDialog
+          target={{ quote_id: q.id }}
+          balance={Math.max(0, breakdown.deposit_cents - breakdown.paid_cents)}
+          deposit
+          onClose={() => setDepositing(false)}
+          onRecorded={() => {
+            setDepositing(false)
+            void reload()
+          }}
+        />
+      )}
+      <PreviewDialog kind="quote" id={q.id} open={preview} onOpenChange={setPreview} version={`${q.updated_at}-${detail.breakdown.total_cents}-${detail.attachments.length}-${detail.payments.length}`} />
       <Dialog
         open={approving}
         onOpenChange={setApproving}
         title={`Approve ${q.number}`}
-        description={q.status === 'draft' ? 'Approving locks the prices. Convert it to an invoice in Phase 3.' : undefined}
+        description={q.status === 'draft' ? 'Approving locks the prices. You can then convert it to an invoice.' : 'You can then convert it to an invoice.'}
         footer={
           <>
             <Button onClick={() => setApproving(false)}>Cancel</Button>
@@ -362,9 +377,6 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
         </Field>
         {!['', 'Price', 'Timing', 'Went with another shop', 'Project cancelled'].includes(reason) && <Input className="mt-2" value={reason.trimStart()} onChange={(e) => setReason(e.target.value || ' ')} placeholder="Reason" autoFocus />}
       </Dialog>
-      <ConfirmDialog open={removing != null} onOpenChange={(o) => !o && setRemoving(null)} title="Remove line item?" danger confirmLabel="Remove" onConfirm={() => setLines((ls) => ls.filter((_, j) => j !== removing))}>
-        This line has quantities entered. It will be removed from the quote.
-      </ConfirmDialog>
     </div>
   )
 }

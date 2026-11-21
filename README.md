@@ -4,10 +4,11 @@ A local-first desktop app for screen printing and custom apparel shops: build ac
 fast, turn approved quotes into invoices, track payments, and send professional PDFs. Everything
 stays on your computer and works without an internet connection.
 
-**Status:** Phases 1 and 2 of 5 are done: setup wizard, customers, garment catalog with CSV
+**Status:** Phases 1–3 of 5 are done: setup wizard, customers, garment catalog with CSV
 import, pricing matrices and rules (including margin-based markup), fee presets, ink library,
-settings, backups, and the quote builder with live pricing, revisions and quote PDFs. Invoices
-and payments arrive in Phase 3. See [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
+settings, backups, the quote builder with live pricing, revisions and quote PDFs, and invoices
+with deposits, payments, receipts and email. The dashboard, reports and installers come in
+Phase 4. See [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
 
 ## Building a quote
 
@@ -33,16 +34,32 @@ npm run dev
 
 `npm run dev` starts the app with hot reload. `npm run build && npm start` runs the production build.
 
+## Invoices and payments
+
+On an approved quote, **Convert to invoice** creates the invoice with the same lines and the
+exact prices that were approved; any deposit you recorded on the quote (**Record deposit**)
+comes along as a payment. Adjust final counts if needed, then **Email** or **Mark as sent**.
+**Record payment** for each check, card or Venmo payment; the status moves to Partially paid
+and Paid on its own, and unpaid invoices past their due date show as Overdue. Each payment has
+a receipt PDF you can open or email.
+
+**Email:** add your SMTP server under Settings → Email (for Gmail: `smtp.gmail.com`, port 587,
+your address, and an [app password](https://support.google.com/accounts/answer/185833)), then
+use **Send test**. Without SMTP, the Email button saves the PDF, opens its folder, and copies
+the message so you can send it from your usual email program.
+
 ## Tests
 
 ```bash
-npm test            # unit tests (money, numbering, CSV import, pricing engine, quotes, database, backups)
+npm test            # unit tests (money, CSV import, pricing engine, quotes, invoices, payments, backups)
 npm run typecheck   # TypeScript, main + renderer
 npm run test:e2e    # builds, then drives the real app with Playwright
 ```
 
 On a Linux machine without a display, run the end-to-end tests under Xvfb:
-`xvfb-run -a npm run test:e2e`.
+`xvfb-run -a npm run test:e2e`. The SMTP test needs a secret store to save the password; it is
+skipped when none is available. To include it on headless Linux, run inside a session with
+GNOME Keyring: `dbus-run-session -- sh -c 'echo -n pw | gnome-keyring-daemon --unlock --components=secrets; XDG_CURRENT_DESKTOP=GNOME xvfb-run -a npm run test:e2e'`.
 
 ## Build installers
 

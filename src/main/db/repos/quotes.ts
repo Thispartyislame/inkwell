@@ -3,19 +3,13 @@ import { addDays } from '@shared/dates'
 import type { QuoteFilter } from '@shared/ipc'
 import type { QuoteBreakdown } from '@shared/pricing/types'
 import {
-  buildPricingBase,
   isEditable,
   priceQuoteDoc,
   QuoteEditSchema,
   type FrozenPricing,
-  type PricingBase,
   type QuoteDetail,
   type QuoteTotals,
-  type QuoteCustomerSummary,
   type QuoteEdit,
-  type QuoteFee,
-  type QuoteImprint,
-  type QuoteLine,
   type QuoteListRow,
   type QuoteRecord,
   type QuoteStatus
@@ -24,51 +18,16 @@ import { customerDisplayName } from '@shared/schemas'
 import { NotFoundError, parseOrThrow, UserError } from '../errors'
 import { fromRow, insert, likePattern, now, toRow, update } from '../rows'
 import { listActivity, logActivity } from './activity'
+import { checkCustomer, customerSummary, livePricingBase, loadChildren, referencedMatrices, totalsOf, writeChildren } from './docstore'
+export { livePricingBase } from './docstore'
 import { listAttachments } from './attachments'
-import { getCustomer } from './customers'
-import { getRules, listFees, listMatrices } from './pricing'
+import { listPayments, paidOn } from './payments'
 import { allocateNumber, getSettings } from './settings'
 
 type DB = Database.Database
 
 const QUOTE = { bool: ['rush', 'charge_tax_anyway', 'is_reorder'], json: ['disabled_auto_fees'] } as const
-const LINE = { bool: ['customer_supplied', 'is_dark'], json: ['garment', 'costs', 'overrides', 'calculated'] } as const
-const IMPRINT = { bool: ['underbase', 'new_digitizing', 'is_reorder'], json: ['specialty'] } as const
-const FEE = { bool: ['taxable'] } as const
 const EDIT_FIELDS = (Object.keys(QuoteEditSchema.shape) as (keyof QuoteEdit)[]).filter((k) => k !== 'id' && k !== 'lines' && k !== 'fees')
-
-// ---------- pricing configuration ----------
-/** Live pricing config: current rules, active matrices plus any archived ones a quote still references. */
-export function livePricingBase(db: DB, referencedMatrixIds: number[] = []): PricingBase {
-  const all = listMatrices(db, true)
-  const matrices = all.filter((m) => !m.archived_at || referencedMatrixIds.includes(m.id))
-  return buildPricingBase(getRules(db), matrices, getSettings(db), listFees(db, true))
-}
-
-function customerSummary(db: DB, id: number | null): QuoteCustomerSummary | null {
-  if (id == null) return null
-  const c = getCustomer(db, id)
-  const addr = (k: 'billing' | 'shipping') => {
-    const f = (s: string) => (c as unknown as Record<string, string>)[`${k}_${s}`] ?? ''
-    return [f('line1'), f('line2'), [f('city'), [f('state'), f('postal_code')].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean)
-  }
-  const billing = addr('billing')
-  return {
-    id: c.id,
-    display_name: customerDisplayName(c),
-    company_name: c.company_name,
-    first_name: c.first_name,
-    last_name: c.last_name,
-    email: c.email,
-    phone: c.phone,
-    billing,
-    shipping: c.shipping_same_as_billing ? billing : addr('shipping'),
-    tax_exempt: c.tax_exempt,
-    exempt_cert_number: c.exempt_cert_number,
-    exempt_cert_expires_on: c.exempt_cert_expires_on,
-    pricing_matrix_id: c.pricing_matrix_id
-  }
-}
 
 // ---------- reading ----------
 function quoteRow(db: DB, id: number): Record<string, unknown> {
@@ -80,44 +39,13 @@ function quoteRow(db: DB, id: number): Record<string, unknown> {
 export function loadQuote(db: DB, id: number): QuoteRecord {
   const { pricing_base: _p, totals: _t, ...row } = quoteRow(db, id)
   const q = fromRow<Omit<QuoteRecord, 'lines' | 'fees'>>(row, QUOTE)
-  const lineRows = db.prepare('SELECT * FROM quote_line_items WHERE quote_id = ? ORDER BY sort_order').all(id) as Record<string, unknown>[]
-  const sizeStmt = db.prepare('SELECT size, qty FROM quote_line_sizes WHERE line_item_id = ? ORDER BY sort_order')
-  const impStmt = db.prepare('SELECT * FROM quote_imprints WHERE line_item_id = ? ORDER BY sort_order')
-  const lines: QuoteLine[] = lineRows.map((r) => {
-    const l = fromRow<Record<string, unknown>>(r, LINE)
-    return {
-      uid: l.uid as string,
-      garment_id: l.garment_id as number | null,
-      garment: l.garment as QuoteLine['garment'],
-      costs: l.costs as QuoteLine['costs'],
-      description: l.description as string,
-      customer_supplied: l.customer_supplied as boolean,
-      color_name: l.color_name as string,
-      color_hex: l.color_hex as string,
-      is_dark: l.is_dark as boolean,
-      sizes: sizeStmt.all(r.id) as QuoteLine['sizes'],
-      imprints: (impStmt.all(r.id) as Record<string, unknown>[]).map((ir) => {
-        const { id: _id, line_item_id: _l, sort_order: _s, artwork_attachment_id: _a, ...i } = fromRow<Record<string, unknown>>(ir, IMPRINT)
-        return i as unknown as QuoteImprint
-      }),
-      overrides: l.overrides as QuoteLine['overrides'],
-      override_reason: l.override_reason as string
-    }
-  })
-  const fees = (db.prepare('SELECT * FROM quote_fees WHERE quote_id = ? ORDER BY sort_order').all(id) as Record<string, unknown>[]).map((r) => {
-    const { id: _id, quote_id: _q, sort_order: _s, ...f } = fromRow<Record<string, unknown>>(r, FEE)
-    return f as unknown as QuoteFee
-  })
+  const { lines, fees } = loadChildren(db, 'quote', id)
   return { ...q, lines, fees }
 }
 
 function frozenPricing(db: DB, id: number): FrozenPricing | null {
   const raw = (db.prepare('SELECT pricing_base FROM quotes WHERE id = ?').get(id) as { pricing_base: string | null }).pricing_base
   return raw ? (JSON.parse(raw) as FrozenPricing) : null
-}
-
-function referencedMatrices(q: QuoteEdit): number[] {
-  return q.lines.flatMap((l) => l.imprints.map((i) => i.matrix_id).filter((x): x is number => x != null))
 }
 
 /** The pricing a quote should be shown with right now. */
@@ -127,11 +55,11 @@ export function effectivePricing(db: DB, q: QuoteRecord, today: string): FrozenP
     if (f) return f
   }
   const c = customerSummary(db, q.customer_id)
-  return { base: livePricingBase(db, referencedMatrices(q)), customer: c && { tax_exempt: c.tax_exempt, exempt_cert_expires_on: c.exempt_cert_expires_on, pricing_matrix_id: c.pricing_matrix_id }, priced_on: today }
+  return { base: livePricingBase(db, referencedMatrices(q.lines)), customer: c && { tax_exempt: c.tax_exempt, exempt_cert_expires_on: c.exempt_cert_expires_on, pricing_matrix_id: c.pricing_matrix_id }, priced_on: today }
 }
 
-export function priceWith(q: QuoteEdit, p: FrozenPricing): QuoteBreakdown {
-  return priceQuoteDoc(q, p.base, p.customer as QuoteCustomerSummary | null, p.priced_on)
+export function priceWith(q: QuoteEdit, p: FrozenPricing, depositPaid = 0): QuoteBreakdown {
+  return priceQuoteDoc(q, p.base, p.customer, p.priced_on, depositPaid)
 }
 
 export function getQuoteDetail(db: DB, id: number, today: string): QuoteDetail {
@@ -140,13 +68,17 @@ export function getQuoteDetail(db: DB, id: number, today: string): QuoteDetail {
   const revisions = db
     .prepare('SELECT id, number, revision, status, total_cents, updated_at FROM quotes WHERE root_number = ? ORDER BY revision')
     .all(quote.root_number) as QuoteDetail['revisions']
+  const payments = listPayments(db, { quote_id: id, includeVoided: true })
+  const inv = quote.converted_invoice_id ? (db.prepare('SELECT id, number FROM invoices WHERE id = ?').get(quote.converted_invoice_id) as { id: number; number: string } | undefined) : undefined
   return {
     quote,
     customer: customerSummary(db, quote.customer_id),
     pricing,
-    breakdown: priceWith(quote, pricing),
+    breakdown: priceWith(quote, pricing, paidOn(db, { quote_id: id })),
     attachments: listAttachments(db, 'quote', id),
     activity: listActivity(db, 'quote', id),
+    payments,
+    converted_invoice: inv ?? null,
     revisions
   }
 }
@@ -192,26 +124,6 @@ export function listQuotes(db: DB, f: QuoteFilter = {}): QuoteListRow[] {
 }
 
 // ---------- writing ----------
-function totalsOf(b: QuoteBreakdown): QuoteTotals {
-  return {
-    pieces: b.total_pieces,
-    items_subtotal_cents: b.items_subtotal_cents,
-    fees_subtotal_cents: b.fees_subtotal_cents,
-    subtotal_cents: b.subtotal_cents,
-    discount_cents: b.discount_cents,
-    rush_cents: b.rush_cents,
-    shipping_cents: b.shipping_cents,
-    taxable_cents: b.taxable_cents,
-    tax_bp: b.tax_bp,
-    tax_cents: b.tax_cents,
-    total_cents: b.total_cents,
-    deposit_cents: b.deposit_cents,
-    cost_cents: b.cost_cents,
-    profit_cents: b.profit_cents,
-    margin_bp: b.margin_bp
-  }
-}
-
 export function getQuoteTotals(db: DB, id: number): QuoteTotals {
   return JSON.parse((db.prepare('SELECT totals FROM quotes WHERE id = ?').get(id) as { totals: string }).totals) as QuoteTotals
 }
@@ -228,37 +140,8 @@ function writeQuote(db: DB, q: QuoteEdit, pricing: FrozenPricing): QuoteBreakdow
     totals: JSON.stringify(totalsOf(b)),
     total_cents: b.total_cents
   })
-  db.prepare('DELETE FROM quote_line_items WHERE quote_id = ?').run(id)
-  db.prepare('DELETE FROM quote_fees WHERE quote_id = ?').run(id)
-  const insSize = db.prepare('INSERT INTO quote_line_sizes (line_item_id, size, qty, sort_order) VALUES (?, ?, ?, ?)')
-  lines.forEach((l, i) => {
-    const lb = b.lines[i]
-    const { sizes, imprints, ...lineFields } = l
-    const lineId = insert(db, 'quote_line_items', {
-      ...toRow(lineFields as Record<string, unknown>, LINE),
-      quote_id: id,
-      sort_order: i,
-      calculated: JSON.stringify(lb.groups.map((g) => ({ group: g.group, unit_cents: g.calculated_unit_cents }))),
-      total_cents: lb.total_cents
-    })
-    sizes.forEach((s, j) => insSize.run(lineId, s.size, s.qty, j))
-    imprints.forEach((imp, j) => insert(db, 'quote_imprints', { ...toRow(imp as unknown as Record<string, unknown>, IMPRINT), line_item_id: lineId, sort_order: j }))
-  })
-  fees.forEach((f, i) => insert(db, 'quote_fees', { ...toRow(f as unknown as Record<string, unknown>, FEE), quote_id: id, sort_order: i }))
+  writeChildren(db, 'quote', id, lines, fees, b)
   return b
-}
-
-function checkCustomer(db: DB, customerId: number | null, contactId: number | null): void {
-  if (customerId == null) {
-    if (contactId != null) throw new UserError('Pick a customer before a contact')
-    return
-  }
-  const c = getCustomer(db, customerId)
-  if (c.archived_at) throw new UserError(`${customerDisplayName(c)} is archived. Restore the customer first.`)
-  if (contactId != null) {
-    const k = db.prepare('SELECT customer_id FROM customer_contacts WHERE id = ?').get(contactId) as { customer_id: number } | undefined
-    if (!k || k.customer_id !== customerId) throw new UserError('That contact belongs to a different customer')
-  }
 }
 
 export function createQuote(db: DB, opts: { customer_id?: number | null }, today: string): QuoteRecord {
@@ -390,6 +273,8 @@ export function reviseQuote(db: DB, id: number, today: string): QuoteRecord {
     const number = `${q.root_number}-R${max + 1}`
     const newId = copyInto(db, q, { number, root_number: q.root_number, revision: max + 1, previous_revision_id: q.id, reorder_of_id: q.reorder_of_id }, today, (e) => ({ ...e, issued_on: today }))
     setStatus(db, id, 'superseded')
+    // Deposits follow the live revision.
+    db.prepare('UPDATE payments SET quote_id = ? WHERE quote_id = ? AND invoice_id IS NULL').run(newId, id)
     logActivity(db, 'quote', id, 'revised', { new_number: number })
     logActivity(db, 'quote', newId, 'created', { revision_of: q.number })
     return loadQuote(db, newId)

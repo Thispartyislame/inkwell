@@ -6,13 +6,13 @@ import { useAsync } from '../../components/toast'
 import { Button, Card, Checkbox, ConfirmDialog, cx, Input } from '../../components/ui'
 import { api, fileUrl } from '../../lib/api'
 
-export function AttachmentsCard({ quoteId, attachments, editable, onChanged }: { quoteId: number; attachments: Attachment[]; editable: boolean; onChanged: () => void }) {
+export function AttachmentsCard({ ownerType, ownerId, attachments, editable, onChanged }: { ownerType: 'quote' | 'invoice'; ownerId: number; attachments: Attachment[]; editable: boolean; onChanged: () => void }) {
   const run = useAsync()
   const [over, setOver] = useState(false)
   const [deleting, setDeleting] = useState<Attachment | null>(null)
 
   const add = async (paths: string[] | null) => {
-    const r = await run(() => api.quotes.addAttachments(quoteId, paths))
+    const r = await run(() => api.attachments.add(ownerType, ownerId, paths))
     if (r?.length) onChanged()
   }
 
@@ -60,11 +60,11 @@ export function AttachmentsCard({ quoteId, attachments, editable, onChanged }: {
                     defaultValue={a.caption}
                     placeholder="Caption"
                     aria-label={`Caption for ${a.original_name}`}
-                    onBlur={(e) => e.target.value !== a.caption && void run(async () => (await api.quotes.updateAttachment(a.id, { caption: e.target.value }), onChanged()))}
+                    onBlur={(e) => e.target.value !== a.caption && void run(async () => (await api.attachments.update(a.id, { caption: e.target.value }), onChanged()))}
                   />
                   <div className="flex items-center justify-between">
                     {image ? (
-                      <Checkbox checked={a.include_in_pdf} label="On PDF" onChange={(v) => run(async () => (await api.quotes.updateAttachment(a.id, { include_in_pdf: v }), onChanged()))} />
+                      <Checkbox checked={a.include_in_pdf} label="On PDF" onChange={(v) => run(async () => (await api.attachments.update(a.id, { include_in_pdf: v }), onChanged()))} />
                     ) : (
                       <span className="text-slate-500">{a.kind === 'artwork' ? 'Artwork' : a.kind}</span>
                     )}
@@ -92,10 +92,10 @@ export function AttachmentsCard({ quoteId, attachments, editable, onChanged }: {
         danger
         confirmLabel="Remove"
         onConfirm={async () => {
-          await run(async () => (await api.quotes.deleteAttachment(deleting!.id), onChanged()), 'File removed')
+          await run(async () => (await api.attachments.remove(deleting!.id), onChanged()), 'File removed')
         }}
       >
-        {deleting?.original_name} will be deleted from this quote. The original file on your computer is not touched.
+        {deleting?.original_name} will be deleted from this {ownerType}. The original file on your computer is not touched.
       </ConfirmDialog>
     </Card>
   )

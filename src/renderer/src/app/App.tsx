@@ -9,7 +9,8 @@ import { CustomerDetailPage } from '../features/customers/CustomerDetail'
 import { CustomerEditor } from '../features/customers/CustomerEditor'
 import { CustomersList } from '../features/customers/CustomersList'
 import { Dashboard } from '../features/dashboard/Dashboard'
-import { ComingSoon } from '../features/dashboard/ComingSoon'
+import { InvoicePage } from '../features/invoices/InvoiceEditor'
+import { InvoicesList } from '../features/invoices/InvoicesList'
 import { MatrixEditor } from '../features/pricing/MatrixEditor'
 import { PricingPage } from '../features/pricing/PricingPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
@@ -59,7 +60,8 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="quotes" element={<QuotesList />} />
           <Route path="quotes/:id" element={<QuoteBuilderPage />} />
-          <Route path="invoices" element={<ComingSoon what="Invoices" phase={3} />} />
+          <Route path="invoices" element={<InvoicesList />} />
+          <Route path="invoices/:id" element={<InvoicePage />} />
           <Route path="customers" element={<CustomersList />} />
           <Route path="customers/new" element={<CustomerEditor />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />

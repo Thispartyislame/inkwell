@@ -34,7 +34,7 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
       <section className="inkdoc-parties">
         {doc.bill_to.length > 0 && (
           <div>
-            <h3>{doc.ship_to.length ? 'Bill to' : 'Prepared for'}</h3>
+            <h3>{doc.type === 'receipt' ? 'Received from' : doc.type === 'invoice' || doc.ship_to.length ? 'Bill to' : 'Prepared for'}</h3>
             {doc.bill_to.map((l, i) => (
               <div key={i} className={i === 0 ? 'inkdoc-strong' : ''}>
                 {l}
@@ -60,6 +60,23 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
         )}
       </section>
 
+      {doc.receipt && (
+        <section className="inkdoc-receipt">
+          <h2>{doc.receipt.heading}</h2>
+          <table>
+            <tbody>
+              {doc.receipt.rows.map((r) => (
+                <tr key={r.label}>
+                  <th>{r.label}</th>
+                  <td>{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {(doc.lines.length > 0 || doc.fees.length > 0) && (
       <table className="inkdoc-items">
         <thead>
           <tr>
@@ -103,6 +120,7 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
           ))}
         </tbody>
       </table>
+      )}
 
       <section className="inkdoc-summary">
         <div className="inkdoc-notes">
@@ -132,6 +150,13 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
           )}
         </div>
       </section>
+
+      {doc.how_to_pay && (
+        <section className="inkdoc-howtopay">
+          <h3>How to pay</h3>
+          <p>{doc.how_to_pay}</p>
+        </section>
+      )}
 
       {doc.images.length > 0 && (
         <section className="inkdoc-images">

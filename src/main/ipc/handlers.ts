@@ -23,7 +23,7 @@ import * as pricing from '../db/repos/pricing'
 import { globalSearch } from '../db/repos/search'
 import { completeSetup, getSettings, saveSettings, setLastBackupAt, setLogoPath, setSmtpPasswordEnc } from '../db/repos/settings'
 import { removeStoredFile, resolveInside, storeFile } from '../files/files'
-import { createQuoteHandlers } from './quotes'
+import { createDocumentHandlers } from './quotes'
 
 export interface MainContext {
   db: Database.Database
@@ -97,13 +97,13 @@ export function createHandlers(ctx: MainContext): ApiImpl {
         removeStoredFile(ctx.userData, old)
         return s
       },
-      setSmtpPassword: (password) => {
+      setSmtpPassword: async (password) => {
         if (!password) return setSmtpPasswordEnc(db(), null)
-        if (!safeStorage.isEncryptionAvailable())
+        if (!(await safeStorage.isAsyncEncryptionAvailable()))
           throw new UserError('This computer has no secure password storage available, so the SMTP password can’t be saved safely.')
-        return setSmtpPasswordEnc(db(), safeStorage.encryptString(password))
+        return setSmtpPasswordEnc(db(), await safeStorage.encryptStringAsync(password))
       },
-      encryptionAvailable: () => safeStorage.isEncryptionAvailable()
+      encryptionAvailable: () => safeStorage.isAsyncEncryptionAvailable()
     },
 
     customers: {
@@ -201,7 +201,7 @@ export function createHandlers(ctx: MainContext): ApiImpl {
       global: (q) => globalSearch(db(), q)
     },
 
-    quotes: createQuoteHandlers(ctx)
+    ...createDocumentHandlers(ctx)
   }
 }
 

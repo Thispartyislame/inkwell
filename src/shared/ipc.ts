@@ -26,6 +26,7 @@ import type {
 } from './schemas'
 import type { CustomerDocument } from './documents'
 import type { PricingBase, QuoteDetail, QuoteEdit, QuoteListRow, QuoteRecord, QuoteStatus } from './quote'
+import type { InvoiceDetail, InvoiceEdit, InvoiceListRow, InvoiceRecord, InvoiceStatus, Payment, PaymentInput } from './invoice'
 
 export interface AppInfo {
   version: string
@@ -56,7 +57,8 @@ export interface CustomerDetail {
   certAttachment: Attachment | null
   /** filled in by Phase 2/3; empty until then */
   quotes: Array<{ id: number; number: string; job_name: string; status: string; total_cents: number; issued_on: string }>
-  invoices: Array<{ id: number; number: string; job_name: string; status: string; total_cents: number; balance_cents: number; issued_on: string }>
+  invoices: Array<{ id: number; number: string; job_name: string; status: string; total_cents: number; balance_cents: number; issued_on: string; due_on: string | null }>
+  payments: import('./invoice').Payment[]
   balance_cents: number
   activity: ActivityEntry[]
 }
@@ -89,6 +91,39 @@ export interface QuoteFilter {
   search?: string
   includeArchived?: boolean
   includeSuperseded?: boolean
+}
+
+export type DocumentKind = 'quote' | 'invoice' | 'receipt'
+
+export interface InvoiceFilter {
+  status?: InvoiceStatus | 'overdue' | 'unpaid'
+  customer_id?: number
+  from?: string
+  to?: string
+  search?: string
+  includeArchived?: boolean
+  today?: string
+}
+
+export interface EmailCompose {
+  to: string
+  /** customer and contact addresses */
+  suggestions: string[]
+  subject: string
+  body: string
+  attachment_name: string
+  smtp_ready: boolean
+}
+
+export interface EmailSendInput {
+  kind: DocumentKind
+  id: number
+  to: string
+  cc?: string
+  subject: string
+  body: string
+  /** a draft quote or invoice becomes Sent */
+  mark_sent: boolean
 }
 
 export interface AttachmentPatch {
@@ -199,13 +234,40 @@ export interface Api {
     reorder(id: number): QuoteRecord
     archive(id: number): QuoteDetail
     restore(id: number): QuoteDetail
+    /** approved quote → invoice */
+    convert(id: number): InvoiceRecord
+  }
+  invoices: {
+    list(filter: InvoiceFilter): InvoiceListRow[]
+    get(id: number): InvoiceDetail
+    create(opts: { customer_id?: number | null }): InvoiceRecord
+    save(input: InvoiceEdit): InvoiceDetail
+    markSent(id: number): InvoiceDetail
+    void(id: number, reason: string): InvoiceDetail
+    reprice(id: number): InvoiceDetail
+    archive(id: number): InvoiceDetail
+    restore(id: number): InvoiceDetail
+  }
+  payments: {
+    record(input: PaymentInput): Payment
+    void(id: number, reason: string): Payment
+  }
+  attachments: {
     /** paths from drag and drop; null opens a file picker */
-    addAttachments(quoteId: number, paths: string[] | null): Attachment[]
-    updateAttachment(id: number, patch: AttachmentPatch): Attachment
-    deleteAttachment(id: number): void
-    document(id: number): CustomerDocument
-    savePdf(id: number): string | null
-    openPdf(id: number): string
+    add(ownerType: 'quote' | 'invoice', ownerId: number, paths: string[] | null): Attachment[]
+    update(id: number, patch: AttachmentPatch): Attachment
+    remove(id: number): void
+  }
+  documents: {
+    preview(kind: DocumentKind, id: number): CustomerDocument
+    savePdf(kind: DocumentKind, id: number): string | null
+    openPdf(kind: DocumentKind, id: number): string
+  }
+  email: {
+    compose(kind: DocumentKind, id: number): EmailCompose
+    send(input: EmailSendInput): { to: string[] }
+    prepareManual(input: EmailSendInput): { file: string }
+    test(to: string): void
   }
 }
 
@@ -261,13 +323,23 @@ export const API_METHODS: MethodMap = {
     reorder: true,
     archive: true,
     restore: true,
-    addAttachments: true,
-    updateAttachment: true,
-    deleteAttachment: true,
-    document: true,
-    savePdf: true,
-    openPdf: true
-  }
+    convert: true
+  },
+  invoices: {
+    list: true,
+    get: true,
+    create: true,
+    save: true,
+    markSent: true,
+    void: true,
+    reprice: true,
+    archive: true,
+    restore: true
+  },
+  payments: { record: true, void: true },
+  attachments: { add: true, update: true, remove: true },
+  documents: { preview: true, savePdf: true, openPdf: true },
+  email: { compose: true, send: true, prepareManual: true, test: true }
 }
 
 /** What the renderer sees: every method returns a Promise. */

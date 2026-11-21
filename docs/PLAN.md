@@ -342,19 +342,22 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 - [x] E2E: build a quote via UI (combined pricing, override, fees), autosave, preview, PDF, send, revise, reorder, Ctrl+N
 
 ### Phase 3: Invoices, payments, sending
-- [ ] Convert approved quote → invoice (one click, links both ways, activity log, frozen prices)
-- [ ] Invoice from scratch
-- [ ] Invoice statuses incl. computed Overdue, Void (with reason)
-- [ ] Record payments/deposits; history; balance on invoice and customer
-- [ ] Quote deposit carries to invoice
-- [ ] Invoice PDF (terms, payments, balance due, how-to-pay, PAID stamp)
-- [ ] Receipt PDF per payment
-- [ ] Save PDF / Open PDF
-- [ ] Email via SMTP with merge-field templates and PDF attached; mark Sent; log
-- [ ] No-SMTP fallback: generate PDF, reveal folder, copy body to clipboard
-- [ ] SMTP "Send test email" in Settings
-- [ ] Tests: conversion, payment status transitions, overdue, merge fields
-- [ ] E2E smoke: approve → convert → record payment → PAID
+- [x] Migration 004: invoices (+ lines, sizes, imprints, fees) and payments; quotes and invoices share one storage module
+- [x] Convert approved quote → invoice (one click; copies lines, fees, files and the exact approved pricing; links both ways; logs activity)
+- [x] Invoice from scratch (follows current pricing until sent)
+- [x] Invoice statuses Draft → Sent → Partially paid → Paid, computed Overdue, Void (with reason; frees the quote to be invoiced again)
+- [x] Invoices stay editable until sent, even with a deposit recorded (final counts often change); "Reprice with current pricing" for converted drafts
+- [x] Record payments and deposits (method, check #, reference, note); void a payment; history and balance on invoice and customer
+- [x] Deposit taken on a quote carries over to the invoice as a payment; deposits follow a revised quote
+- [x] Invoice PDF: payment terms, PO and quote numbers, payments received, balance due callout, how-to-pay text, PAID / VOID stamp
+- [x] Receipt PDF for a single payment (R-1001 numbering)
+- [x] Save PDF / Open PDF for quotes, invoices and receipts
+- [x] Email via SMTP (nodemailer) with editable subject/body from merge-field templates and the PDF attached; marks Sent and logs it
+- [x] No-SMTP fallback: save the PDF, open its folder, copy the message to the clipboard (optionally mark sent)
+- [x] SMTP "Send test" in Settings; password via the OS secure store (async safeStorage API)
+- [x] Invoices list (status incl. overdue/unpaid, customer, dates, search; paid and balance columns), invoices in global search, invoices/payments/balance on the customer page
+- [x] Tests: conversion, frozen pricing, deposits carry-over, statuses and overdue, void rules, scratch invoices, customer balances, invoice/receipt documents, merge fields, upgrade from Phase 2
+- [x] E2E: approve → deposit → convert → email fallback → pay in full (PAID) → receipt → void payment → lists → real SMTP send to a local test server
 
 ### Phase 4: Dashboard, reports, polish
 - [ ] Dashboard widgets (awaiting response, expiring this week, outstanding, overdue, revenue MoM, upcoming in-hands)

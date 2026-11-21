@@ -113,3 +113,36 @@ Choices not dictated by `docs/BUILD_PROMPT.md`. Newest at the bottom.
 40. **Attachments** accept images, PDF, AI, EPS, PSD and TIFF up to 100 MB each. Only images
     can be placed on the PDF. Files are copied into the data folder; deleting one never touches
     the original.
+
+## Phase 3
+
+41. **Only approved quotes convert**, and only once while the invoice is live. Voiding the
+    invoice unlinks it so the quote can be invoiced again. A converted quote can't be revised.
+42. **Converted invoices keep the quote's pricing** (the frozen rules and matrices it was
+    approved with), even while you edit them before sending, so adding two shirts uses the
+    quoted per-piece price. "Reprice with current pricing" switches a draft to today's pricing.
+    Blank invoices follow current pricing until sent.
+43. **Invoices lock when sent**, not when paid. A deposit often arrives before the final counts
+    are known, so payments alone don't lock an invoice. To change a sent invoice, void it and
+    make a new one. Void is refused while live payments exist.
+44. **Status is computed from money**: any payment → Partially paid; paid ≥ total → Paid;
+    otherwise Sent (if sent) or Draft. Overdue is never stored: an unpaid sent invoice past its
+    due date shows as Overdue. Overpayment is allowed and shows as a credit.
+45. **Deposits** are payments recorded against a quote (sent, approved, expired or draft). They
+    move to the revised quote on Revise and to the invoice on conversion, keeping their receipt
+    numbers. Payments are never deleted, only voided (kept in history, crossed out).
+46. **Due date** = invoice date + the payment terms in Settings (Net N; due on receipt = same
+    day). Terms are stored as text on the invoice and can be edited per invoice.
+47. **Receipt numbers** (R-1001…) are allocated per payment, so every payment has a printable
+    receipt.
+48. **Customer balance** = sum of balances of sent / partially paid / paid invoices (not drafts
+    or void); a negative total means the customer has a credit.
+49. **Email** goes out through your own SMTP account; nothing else touches the network. The From
+    name defaults to the shop name, replies go to the shop email. Sending marks a draft quote or
+    unsent invoice as Sent (can be unticked). Without SMTP, Inkwell saves the PDF, opens its
+    folder and copies "Subject + message" to the clipboard.
+50. **SMTP password** uses Electron's async `safeStorage` API (the synchronous one is
+    deprecated). On Linux this needs a running keyring (GNOME Keyring / KWallet); without one
+    the password isn't saved and the no-SMTP fallback is used.
+51. **Document vocabulary**: quotes say "Prepared for", invoices "Bill to", receipts "Received
+    from". Invoices show "how to pay" only while a balance is due.

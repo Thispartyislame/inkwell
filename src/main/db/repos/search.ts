@@ -4,8 +4,9 @@ import { customerDisplayName } from '@shared/schemas'
 import { listCustomers } from './customers'
 import { listGarments } from './garments'
 import { listQuotes } from './quotes'
+import { listInvoices } from './invoices'
 
-/** Global search over quotes, customers and garments. Invoices join in Phase 3. */
+/** Global search over invoices, quotes, customers and garments. */
 export function globalSearch(db: Database.Database, query: string, limit = 8): SearchResult[] {
   const q = query.trim()
   if (!q) return []
@@ -23,5 +24,8 @@ export function globalSearch(db: Database.Database, query: string, limit = 8): S
   const quotes = listQuotes(db, { search: q })
     .slice(0, limit)
     .map<SearchResult>((x) => ({ kind: 'quote', id: x.id, title: `${x.number}${x.job_name ? ` · ${x.job_name}` : ''}`, subtitle: [x.customer_name, x.status].filter(Boolean).join(' · ') }))
-  return [...quotes, ...customers, ...garments]
+  const invoices = listInvoices(db, { search: q })
+    .slice(0, limit)
+    .map<SearchResult>((x) => ({ kind: 'invoice', id: x.id, title: `${x.number}${x.job_name ? ` · ${x.job_name}` : ''}`, subtitle: [x.customer_name, x.status.replace('_', ' ')].filter(Boolean).join(' · ') }))
+  return [...invoices, ...quotes, ...customers, ...garments]
 }

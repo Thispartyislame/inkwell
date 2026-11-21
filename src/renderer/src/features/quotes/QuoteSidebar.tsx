@@ -1,14 +1,14 @@
 import { AlertTriangle, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { bpToPercentString, formatMoney } from '@shared/money'
 import type { AutoFeeKey, QuoteBreakdown } from '@shared/pricing/types'
-import { newUid, type QuoteEdit, type QuoteFee } from '@shared/quote'
+import { newUid, type PricedDoc, type QuoteFee } from '@shared/quote'
 import { FEE_BASIS_LABELS } from '@shared/schemas'
 import { Button, Card, Checkbox, cx, IntInput, MoneyInput, PercentInput, Select, Switch, Input } from '../../components/ui'
 import { useFees } from '../../lib/queries'
 
 const AUTO_LABELS: Record<AutoFeeKey, string> = { screens: 'Screens / setup', digitizing: 'Digitizing', below_min: 'Small order fee', rush: 'Rush' }
 
-export function FeesCard({ edit, breakdown, update }: { edit: QuoteEdit; breakdown: QuoteBreakdown; update: (fn: (e: QuoteEdit) => QuoteEdit) => void }) {
+export function FeesCard<E extends PricedDoc>({ edit, breakdown, update }: { edit: E; breakdown: QuoteBreakdown; update: (fn: (e: E) => E) => void }) {
   const presets = useFees()
   const autoFees = breakdown.fees.filter((f) => f.auto && f.kind !== 'rush')
   const setFee = (i: number, patch: Partial<QuoteFee>) => update((e) => ({ ...e, fees: e.fees.map((f, j) => (j === i ? { ...f, ...patch } : f)) }))
@@ -107,7 +107,7 @@ function Row({ label, value, strong, muted, children }: { label: React.ReactNode
   )
 }
 
-export function TotalsCard({ edit, breakdown: b, defaultTaxBp, update }: { edit: QuoteEdit; breakdown: QuoteBreakdown; defaultTaxBp: number; update: (fn: (e: QuoteEdit) => QuoteEdit) => void }) {
+export function TotalsCard<E extends PricedDoc>({ edit, breakdown: b, defaultTaxBp, update, showDeposit = true }: { edit: E; breakdown: QuoteBreakdown; defaultTaxBp: number; update: (fn: (e: E) => E) => void; showDeposit?: boolean }) {
   const exemptWarning = b.warnings.find((w) => w.code === 'exempt_cert_expired')
   const margin = b.margin_bp
   return (
@@ -118,7 +118,7 @@ export function TotalsCard({ edit, breakdown: b, defaultTaxBp, update }: { edit:
       <div className="flex items-center justify-between gap-2 py-1">
         <span className="flex items-center gap-1.5">
           Discount
-          <Select className="h-7 w-14 px-1 text-xs" value={edit.discount_mode} aria-label="Discount type" onChange={(e) => update((x) => ({ ...x, discount_mode: e.target.value as QuoteEdit['discount_mode'], discount_value: 0 }))}>
+          <Select className="h-7 w-14 px-1 text-xs" value={edit.discount_mode} aria-label="Discount type" onChange={(e) => update((x) => ({ ...x, discount_mode: e.target.value as PricedDoc['discount_mode'], discount_value: 0 }))}>
             <option value="percent">%</option>
             <option value="flat">$</option>
           </Select>
@@ -161,6 +161,13 @@ export function TotalsCard({ edit, breakdown: b, defaultTaxBp, update }: { edit:
       )}
       {b.shipping_cents > 0 && <Row label="Shipping" value={formatMoney(b.shipping_cents)} />}
       <Row label="Total" value={formatMoney(b.total_cents)} strong />
+      {b.paid_cents > 0 && (
+        <>
+          <Row label="Received" value={`−${formatMoney(b.paid_cents)}`} muted />
+          <Row label={b.balance_cents < 0 ? 'Credit' : 'Balance due'} value={formatMoney(Math.abs(b.balance_cents))} strong />
+        </>
+      )}
+      {showDeposit && (
       <div className="flex items-center justify-between gap-2 py-1">
         <span className="flex items-center gap-1.5">
           Deposit
@@ -168,6 +175,7 @@ export function TotalsCard({ edit, breakdown: b, defaultTaxBp, update }: { edit:
         </span>
         <span className="tabular">{formatMoney(b.deposit_cents)}</span>
       </div>
+      )}
 
       <div className="mt-3 rounded-md border border-dashed border-slate-300 p-2.5 text-xs dark:border-slate-700">
         <div className="mb-1 font-semibold text-slate-500">Internal only</div>

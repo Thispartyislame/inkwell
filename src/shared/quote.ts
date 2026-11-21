@@ -208,7 +208,7 @@ export function buildPricingBase(rules: PricingRulesInput, matrices: PricingMatr
   }
 }
 
-export function pricingContext(base: PricingBase, quote: Pick<QuoteEdit, 'tax_bp_override'>, customer: Pick<Customer, 'tax_exempt' | 'exempt_cert_expires_on' | 'pricing_matrix_id'> | QuoteCustomerSummary | null, today: string): PricingContext {
+export function pricingContext(base: PricingBase, quote: Pick<QuoteEdit, 'tax_bp_override'>, customer: Pick<Customer, 'tax_exempt' | 'exempt_cert_expires_on' | 'pricing_matrix_id'> | null, today: string): PricingContext {
   return {
     rules: base.rules,
     matrices: base.matrices,
@@ -240,7 +240,10 @@ export function toImprintInput(i: QuoteImprint): ImprintInput {
   }
 }
 
-export function toPricingInput(q: QuoteEdit, amountPaid = 0): QuotePricingInput {
+/** The part of a quote or invoice the pricing engine reads. */
+export type PricedDoc = Pick<QuoteEdit, 'lines' | 'fees' | 'disabled_auto_fees' | 'discount_mode' | 'discount_value' | 'rush' | 'deposit_bp' | 'charge_tax_anyway' | 'tax_bp_override'>
+
+export function toPricingInput(q: PricedDoc, amountPaid = 0): QuotePricingInput {
   return {
     lines: q.lines.map((l) => ({
       uid: l.uid,
@@ -261,8 +264,8 @@ export function toPricingInput(q: QuoteEdit, amountPaid = 0): QuotePricingInput 
   }
 }
 
-export function priceQuoteDoc(q: QuoteEdit, base: PricingBase, customer: QuoteCustomerSummary | null, today: string): QuoteBreakdown {
-  return priceQuote(toPricingInput(q), pricingContext(base, q, customer, today))
+export function priceQuoteDoc(q: PricedDoc, base: PricingBase, customer: Pick<QuoteCustomerSummary, 'tax_exempt' | 'exempt_cert_expires_on' | 'pricing_matrix_id'> | null, today: string, amountPaid = 0): QuoteBreakdown {
+  return priceQuote(toPricingInput(q, amountPaid), pricingContext(base, q, customer, today))
 }
 
 export const newUid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`).slice(0, 36)
@@ -363,6 +366,9 @@ export interface QuoteDetail {
   breakdown: QuoteBreakdown
   attachments: Attachment[]
   activity: ActivityEntry[]
+  /** deposits taken against this quote (they move to the invoice on conversion) */
+  payments: import('./invoice').Payment[]
+  converted_invoice: { id: number; number: string } | null
   revisions: Array<Pick<QuoteRecord, 'id' | 'number' | 'revision' | 'status' | 'total_cents' | 'updated_at'>>
 }
 

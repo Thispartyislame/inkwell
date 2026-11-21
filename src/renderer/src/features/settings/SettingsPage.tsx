@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useQueryClient } from '@tanstack/react-query'
-import { ImagePlus, Lock, Trash2 } from 'lucide-react'
+import { ImagePlus, Lock, Send, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { formatDocNumber } from '@shared/numbering'
@@ -35,6 +35,30 @@ const FIELD_TAB: Record<string, string> = {
   email: 'shop',
   accent_color: 'appearance',
   smtp_port: 'email'
+}
+
+function TestEmail({ dirty }: { dirty: boolean }) {
+  const [to, setTo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const run = useAsync()
+  return (
+    <div className="mt-4 flex items-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <TextField className="flex-1" label="Send a test email to" value={to} onChange={setTo} placeholder="you@yourshop.com" />
+      <Button
+        icon={<Send className="size-4" />}
+        busy={busy}
+        disabled={!to || dirty}
+        title={dirty ? 'Save your changes first' : undefined}
+        onClick={async () => {
+          setBusy(true)
+          await run(() => api.email.test(to), `Test email sent to ${to}`)
+          setBusy(false)
+        }}
+      >
+        Send test
+      </Button>
+    </div>
+  )
 }
 
 export function SettingsPage() {
@@ -240,7 +264,8 @@ function SettingsForm({ settings }: { settings: Settings }) {
                   </div>
                 </Field>
               </div>
-              <p className="mt-3 text-xs text-slate-500">Sending from inside the app arrives in Phase 3. Without SMTP, Inkwell saves the PDF and copies the message for you to send yourself.</p>
+              <TestEmail dirty={f.dirty} />
+              <p className="mt-3 text-xs text-slate-500">Without SMTP, the Email button saves the PDF, opens its folder and copies the message for you to send from your own email.</p>
             </Card>
             <Card title="Message templates">
               <div className="flex flex-col gap-3">

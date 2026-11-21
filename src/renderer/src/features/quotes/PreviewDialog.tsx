@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import type { CustomerDocument } from '@shared/documents'
+import type { DocumentKind } from '@shared/ipc'
 import { Dialog, Loading } from '../../components/ui'
 import { api } from '../../lib/api'
 import { DocumentView } from '../../pdf/DocumentView'
 import '../../pdf/document.css'
 
 /** Renders the same template as the PDF, on a white page. Page breaks only appear in the PDF. */
-export function PreviewDialog({ quoteId, open, onOpenChange, version }: { quoteId: number; open: boolean; onOpenChange: (v: boolean) => void; version: string }) {
-  const { data, isLoading } = useQuery<CustomerDocument>({ queryKey: ['quote-doc', quoteId, version], queryFn: () => api.quotes.document(quoteId), enabled: open })
+export function PreviewDialog({ kind, id, open, onOpenChange, version }: { kind: DocumentKind; id: number; open: boolean; onOpenChange: (v: boolean) => void; version: string }) {
+  const { data, isLoading } = useQuery<CustomerDocument>({ queryKey: ['doc-preview', kind, id, version], queryFn: () => api.documents.preview(kind, id), enabled: open, gcTime: 0 })
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Preview" description="Exactly what the customer sees. Costs, margins and internal notes are never included." wide>
       {isLoading || !data ? (
