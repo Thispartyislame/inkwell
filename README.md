@@ -4,11 +4,34 @@ A local-first desktop app for screen printing and custom apparel shops: build ac
 fast, turn approved quotes into invoices, track payments, and send professional PDFs. Everything
 stays on your computer and works without an internet connection.
 
-**Status:** Phases 1–3 of 5 are done: setup wizard, customers, garment catalog with CSV
-import, pricing matrices and rules (including margin-based markup), fee presets, ink library,
-settings, backups, the quote builder with live pricing, revisions and quote PDFs, and invoices
-with deposits, payments, receipts and email. The dashboard, reports and installers come in
-Phase 4. See [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
+**Status:** Phases 1–4 of 5 are done: setup wizard, customers, garment catalog with CSV
+import, pricing matrices and rules (including margin-based markup), the quote builder with live
+pricing, revisions and PDFs, invoices with deposits, payments, receipts and email, the
+dashboard, reports with CSV export, the production board, the combined garment order list, and
+installer configuration. Spot-color separations are Phase 5. See
+[`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
+
+## Everyday shortcuts
+
+| Keys | Does |
+|---|---|
+| Ctrl/Cmd+K | Command palette: jump anywhere, run an action, or search any record |
+| Ctrl/Cmd+N | New quote |
+| Ctrl/Cmd+P | Open the PDF of the quote or invoice you're looking at |
+| Ctrl/Cmd+1…8 | Dashboard, Quotes, Invoices, Production, Customers, Catalog, Pricing, Reports |
+
+## Production and ordering blanks
+
+Approving a quote puts the job on **Production** at "Awaiting art"; drag cards along as the
+job moves (the stage follows the job onto its invoice). **Garment order list** combines the
+blanks for the jobs you pick into one order per supplier, by style, color and size, with an
+estimated cost. Export it as CSV or PDF for your distributor, then **Mark as ordered**.
+
+## Reports
+
+**Reports** has sales by month or quarter, sales by customer, sales tax (taxable, exempt and
+non-taxable sales and tax charged, for filing), payments by method, and quote win rate. Every
+table exports to CSV for your accountant or spreadsheet.
 
 ## Building a quote
 
@@ -63,10 +86,23 @@ GNOME Keyring: `dbus-run-session -- sh -c 'echo -n pw | gnome-keyring-daemon --u
 
 ## Build installers
 
+Build each installer on its own operating system:
+
 ```bash
-npm run dist:win    # Windows .exe installer (NSIS), in dist/
-npm run dist:mac    # macOS .dmg, in dist/ (must be run on a Mac)
+npm run dist:win    # on Windows: dist/Inkwell-<version>-win-x64.exe (NSIS installer)
 ```
+
+```bash
+npm run dist:mac    # on a Mac: dist/Inkwell-<version>-mac-x64.dmg and -arm64.dmg
+```
+
+```bash
+npm run dist:linux  # on Linux: dist/Inkwell-<version>-linux-x86_64.AppImage
+```
+
+Building the Windows installer on Linux or macOS also works if Wine is installed. The installer
+lets you choose the install folder, adds Start menu and desktop shortcuts, and never deletes
+your data when uninstalling. The version number shows in Settings → About.
 
 The installers are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn the
 first time. On Windows choose **More info → Run anyway**; on macOS right-click the app and

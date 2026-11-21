@@ -198,6 +198,8 @@ export function convertQuote(db: DB, quoteId: number, today: string): InvoiceRec
     const moved = db.prepare('UPDATE payments SET invoice_id = ?, updated_at = ? WHERE quote_id = ? AND invoice_id IS NULL').run(id, now(), q.id).changes
     writeInvoice(db, edit, quotePricing(db, q, today))
     db.prepare('UPDATE quotes SET converted_invoice_id = ?, updated_at = ? WHERE id = ?').run(id, now(), q.id)
+    // The job carries on in production as the invoice.
+    db.prepare('UPDATE invoices SET production_status = (SELECT COALESCE(production_status, ?) FROM quotes WHERE id = ?), production_updated_at = ? WHERE id = ?').run('awaiting_art', q.id, now(), id)
     logActivity(db, 'quote', q.id, 'converted', { invoice: number })
     logActivity(db, 'invoice', id, 'created', { from_quote: q.number, ...(moved ? { deposits_carried_over: moved } : {}) })
     return loadInvoice(db, id)

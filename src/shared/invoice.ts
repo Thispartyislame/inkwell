@@ -31,6 +31,7 @@ export interface InvoiceRecord extends InvoiceEdit {
   source_quote_id: number | null
   status: InvoiceStatus
   pricing_locked: boolean
+  production_status: import('./production').ProductionStatus | null
   total_cents: Cents
   paid_cents: Cents
   balance_cents: Cents

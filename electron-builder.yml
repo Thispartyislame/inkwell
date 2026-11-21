@@ -1,20 +1,45 @@
 appId: com.inkwell.app
 productName: Inkwell
+copyright: Copyright © 2026
 directories:
   output: dist
   buildResources: resources
 files:
   - out/**
+  - resources/icon.png
   - package.json
+  - '!**/*.map'
 # better-sqlite3 ships Node-API prebuilt binaries that load in Electron as-is, so no native rebuild.
 npmRebuild: false
 asarUnpack:
   - '**/*.node'
+icon: resources/icon.png
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch: [x64]
 nsis:
   oneClick: false
+  perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Inkwell
+  # Your data lives in %APPDATA%\Inkwell and is never removed by the uninstaller.
+  deleteAppDataOnUninstall: false
+
 mac:
-  target: dmg
+  target:
+    - target: dmg
+      arch: [x64, arm64]
   category: public.app-category.business
+  # Unsigned: Gatekeeper needs right-click → Open the first time. See README.
+  identity: null
+
+linux:
+  target: AppImage
+  category: Office
+
+# No auto-update (it would be a network service); new versions are installed by hand.
+publish: null

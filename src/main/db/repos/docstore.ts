@@ -144,6 +144,8 @@ export function totalsOf(b: QuoteBreakdown): QuoteTotals {
     deposit_cents: b.deposit_cents,
     cost_cents: b.cost_cents,
     profit_cents: b.profit_cents,
-    margin_bp: b.margin_bp
+    margin_bp: b.margin_bp,
+    net_sales_cents: b.subtotal_cents - b.discount_cents + b.rush_cents,
+    tax_exempt: b.tax_exempt_applied
   }
 }

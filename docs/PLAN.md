@@ -360,14 +360,15 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 - [x] E2E: approve → deposit → convert → email fallback → pay in full (PAID) → receipt → void payment → lists → real SMTP send to a local test server
 
 ### Phase 4: Dashboard, reports, polish
-- [ ] Dashboard widgets (awaiting response, expiring this week, outstanding, overdue, revenue MoM, upcoming in-hands)
-- [ ] Reports + CSV export: sales by month, by customer, sales tax by period (taxable vs exempt), payments by method, win rate
-- [ ] Global search for invoices; command palette (Ctrl/Cmd+K); Ctrl/Cmd+P  (search over quotes/customers/garments and Ctrl/Cmd+N are done)
-- [ ] Production status field + board view
-- [ ] Garment order list (supplier → style → color → size), CSV + PDF
-- [ ] Packaging: Windows NSIS + macOS dmg, icon, version in Settings → About
-- [ ] README complete
-- [ ] Tests: report queries on fixture data
+- [x] Dashboard: quotes awaiting response, quotes expiring this week, outstanding balance, overdue invoices, sales and collections this month vs last month, upcoming in-hands dates; getting-started card until the first quote
+- [x] Reports with CSV export: sales by month/quarter, sales by customer, sales tax by period (taxable / exempt / non-taxable), payments by method, quote win rate; date presets and custom ranges
+- [x] Global search over invoices, quotes, customers, garments; command palette (Ctrl/Cmd+K) with actions and search; Ctrl/Cmd+N new quote; Ctrl/Cmd+P opens the PDF of the open quote or invoice
+- [x] Production status on approved quotes and invoices (Awaiting art → … → Picked up / shipped), carried from quote to invoice; drag-and-drop board
+- [x] Garment order list: pick jobs, combined by supplier → style → color → size with estimated cost; CSV and PDF; "Mark as ordered"
+- [x] Packaging: app icon, electron-builder config for Windows (NSIS) and macOS (dmg, Intel + Apple silicon), version in Settings → About; packaged build verified (Linux AppImage launched, migrated, rendered a PDF, backed up)
+- [ ] Windows installer and macOS dmg produced: must be built on Windows and a Mac (this sandbox can't run Wine; macOS builds need macOS)
+- [x] README updated
+- [x] Tests: reports, dashboard, production board, garment order, CSV; E2E for dashboard, board, garment order, reports, palette and Ctrl+P
 
 ### Phase 5: Separations (see `docs/BUILD_PROMPT.md` §6A)
 - [ ] Spike: paper.js boolean/offset ops headless in main (or a hidden window if paper needs a DOM)

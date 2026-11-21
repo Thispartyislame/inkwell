@@ -14,6 +14,8 @@ import { AttachmentsCard } from './Attachments'
 import { EmailDialog } from '../documents/EmailDialog'
 import { PaymentDialog, PaymentsCard } from '../documents/Payments'
 import { LineItemsEditor } from './LineItemsEditor'
+import { ProductionSelect } from '../production/ProductionSelect'
+import { useShortcut } from '../../lib/shortcuts'
 import { CustomerPicker } from './pickers'
 import { PreviewDialog } from './PreviewDialog'
 import { FeesCard, TotalsCard } from './QuoteSidebar'
@@ -79,6 +81,7 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
   const [depositing, setDepositing] = useState(false)
   const canDeposit = ['draft', 'sent', 'approved', 'expired'].includes(q.status) && !q.converted_invoice_id && !q.archived_at && !!q.customer_id
   const reload = async () => onReload(await api.quotes.get(q.id))
+  useShortcut('p', () => void act('open', async () => void (await api.documents.openPdf('quote', q.id))))
   const status = effectiveStatus(q, todayIso())
   const customerName = detail.customer && edit.customer_id === detail.customer.id ? detail.customer.display_name : edit.customer_id ? '…' : ''
 
@@ -131,6 +134,7 @@ function Builder({ initial, onReload }: { initial: QuoteDetail; onReload: (d: Qu
             <span className="text-lg font-semibold text-slate-900 tabular dark:text-white">{formatMoney(breakdown.total_cents)}</span>
             {editable && <SaveIndicator s={save} />}
             {q.approved_at && <span>Approved {new Date(q.approved_at).toLocaleDateString()}{q.approved_by_name ? ` by ${q.approved_by_name}` : ''}</span>}
+            {q.status === 'approved' && !q.converted_invoice_id && <ProductionSelect kind="quote" id={q.id} value={q.production_status} onChanged={reload} />}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">

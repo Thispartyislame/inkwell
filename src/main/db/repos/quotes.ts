@@ -218,6 +218,8 @@ export function approveQuote(db: DB, id: number, approvedBy: string, today: stri
     if (!['draft', 'sent', 'expired'].includes(q.status)) throw new UserError(`A ${q.status} quote can’t be approved`)
     if (q.status === 'draft') requireSendable(q, freeze(db, q, today))
     setStatus(db, id, 'approved', { approved_at: now(), approved_by_name: approvedBy.trim().slice(0, 200) })
+    // An approved quote is a job: it starts on the production board.
+    db.prepare(`UPDATE quotes SET production_status = COALESCE(production_status, 'awaiting_art'), production_updated_at = COALESCE(production_updated_at, ?) WHERE id = ?`).run(now(), id)
     logActivity(db, 'quote', id, 'approved', approvedBy.trim() ? { by: approvedBy.trim() } : {})
     return loadQuote(db, id)
   })()

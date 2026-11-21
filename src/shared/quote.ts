@@ -8,6 +8,7 @@ import { priceQuote } from './pricing/engine'
 import type { AutoFeeKey, ImprintInput, MatrixForPricing, PricingContext, QuoteBreakdown, QuotePricingInput } from './pricing/types'
 import { AUTO_FEES, IMPRINT_LOCATIONS, PRINT_SIZES } from './pricing/types'
 import type { ActivityEntry, Attachment } from './schemas'
+import type { ProductionStatus } from './production'
 import { DECORATION_METHODS, GARMENT_CATEGORIES, PricingRulesSchema, SPECIALTY_INKS, SUPPLIERS, hexColor, isoDate, type Customer, type FeePreset, type PricingMatrix, type PricingRulesInput, type Settings } from './schemas'
 import { SIZE_GROUPS, type SizeGroup } from './sizes'
 
@@ -123,6 +124,7 @@ export interface QuoteRecord extends QuoteEdit {
   approved_by_name: string
   declined_at: string | null
   converted_invoice_id: number | null
+  production_status: ProductionStatus | null
   total_cents: Cents
   created_at: string
   updated_at: string
@@ -356,6 +358,10 @@ export interface QuoteTotals {
   cost_cents: number
   profit_cents: number
   margin_bp: number | null
+  /** sales before tax and shipping: subtotal − discount + rush (added in Phase 4) */
+  net_sales_cents?: number
+  /** tax skipped because the customer is exempt (added in Phase 4) */
+  tax_exempt?: boolean
 }
 
 export interface QuoteDetail {

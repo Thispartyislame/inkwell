@@ -19,6 +19,8 @@ import { PreviewDialog } from '../quotes/PreviewDialog'
 import { FeesCard, TotalsCard } from '../quotes/QuoteSidebar'
 import { useDocEditor, type DocEditorConfig, type SaveState } from '../quotes/useQuoteEditor'
 import { InvoiceStatusBadge } from './status'
+import { ProductionSelect } from '../production/ProductionSelect'
+import { useShortcut } from '../../lib/shortcuts'
 
 const CONFIG: DocEditorConfig<InvoiceEdit, InvoiceDetail> = {
   toEdit: (d) => Object.fromEntries(Object.keys(InvoiceEditSchema.shape).map((k) => [k, d.invoice[k as keyof InvoiceEdit]])) as InvoiceEdit,
@@ -90,6 +92,7 @@ function InvoiceEditor({ initial, onReload }: { initial: InvoiceDetail; onReload
   const canPay = inv.status !== 'void' && !inv.archived_at && !!inv.customer_id
 
   const reload = async () => onReload(await api.invoices.get(inv.id))
+  useShortcut('p', () => void act('open', async () => void (await api.documents.openPdf('invoice', inv.id))))
   const act = async (name: string, fn: () => Promise<InvoiceDetail | void>, success?: string) => {
     setBusy(name)
     try {
@@ -127,6 +130,7 @@ function InvoiceEditor({ initial, onReload }: { initial: InvoiceDetail; onReload
               </span>
             )}
             {editable && <SaveIndicator s={save} />}
+            {inv.status !== 'void' && <ProductionSelect kind="invoice" id={inv.id} value={inv.production_status} onChanged={reload} />}
             {detail.source_quote && (
               <Link to={`/quotes/${detail.source_quote.id}`} className="hover:underline">
                 From quote {detail.source_quote.number}

@@ -37,7 +37,7 @@ export interface DocImage {
 }
 
 export interface CustomerDocument {
-  type: 'quote' | 'invoice' | 'receipt'
+  type: 'quote' | 'invoice' | 'receipt' | 'garment_order'
   title: string
   number: string
   accent: string
@@ -56,6 +56,8 @@ export interface CustomerDocument {
   how_to_pay: string
   /** receipts: a short statement instead of line items */
   receipt: { heading: string; rows: { label: string; value: string }[] } | null
+  /** garment order: one table per supplier */
+  order?: { size_columns: string[]; groups: { supplier: string; rows: { style: string; color: string; sizes: string[]; total: string; cost: string }[]; total: string; cost: string }[]; show_cost: boolean; jobs: string[] }
   terms: string
   footer: string
   signature: boolean
@@ -273,5 +275,53 @@ export function receiptDocument({ payment: p, customer, settings: s, logo_url, a
     terms: '',
     signature: false,
     stamp: p.voided_at ? 'VOID' : ''
+  }
+}
+
+/** Blank-garment order to place with distributors (internal; may show your cost). */
+export function garmentOrderDocument(order: import('./production').GarmentOrder, s: Settings, logo_url: string, today: string, showCost = true): CustomerDocument {
+  const money = (c: number) => formatMoney(c, s.currency)
+  return {
+    type: 'garment_order',
+    title: 'Garment order',
+    number: formatDate(today),
+    ...header(s, logo_url),
+    footer: '',
+    meta: [
+      { label: 'Jobs', value: String(order.jobs.length) },
+      { label: 'Pieces', value: String(order.total) },
+      ...(showCost ? [{ label: 'Est. cost', value: money(order.est_cost_cents) }] : [])
+    ],
+    bill_to: [],
+    ship_to: [],
+    job_name: '',
+    lines: [],
+    fees: [],
+    totals: [],
+    callout: null,
+    notes: order.skipped_customer_supplied ? `${order.skipped_customer_supplied} customer-supplied line${order.skipped_customer_supplied === 1 ? '' : 's'} not included.` : '',
+    images: [],
+    how_to_pay: '',
+    receipt: null,
+    order: {
+      size_columns: order.size_columns,
+      show_cost: showCost,
+      jobs: order.jobs.map((j) => [j.number, j.customer, j.job_name].filter(Boolean).join(' · ')),
+      groups: order.groups.map((g) => ({
+        supplier: g.supplier,
+        total: String(g.total),
+        cost: money(g.est_cost_cents),
+        rows: g.items.map((i) => ({
+          style: [[i.brand, i.style_number].filter(Boolean).join(' '), i.name].filter(Boolean).join(' – '),
+          color: i.color,
+          sizes: order.size_columns.map((c) => (i.sizes[c] ? String(i.sizes[c]) : '')),
+          total: String(i.total),
+          cost: money(i.est_cost_cents)
+        }))
+      }))
+    },
+    terms: '',
+    signature: false,
+    stamp: ''
   }
 }

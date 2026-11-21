@@ -359,3 +359,17 @@ body.inkdoc-print {
 .inkdoc-howtopay p {
   white-space: pre-wrap;
 }
+.inkdoc-order .inkdoc-items {
+  margin-bottom: 18px;
+}
+.inkdoc-order th.inkdoc-supplier {
+  color: var(--doc-accent);
+  font-size: 9pt;
+  letter-spacing: 0.04em;
+}
+.inkdoc-jobs {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 8.5pt;
+  color: #3d4452;
+}

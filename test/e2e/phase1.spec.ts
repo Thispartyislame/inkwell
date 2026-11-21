@@ -36,9 +36,8 @@ test('first-run wizard', async () => {
   await win.getByRole('button', { name: 'Next' }).click()
   await expect(win.getByText('Your first quote will be')).toContainText('Q-1001')
   await win.getByRole('button', { name: 'Finish setup' }).click()
-  await expect(win.getByRole('heading', { name: 'Welcome, Test Print Co' })).toBeVisible()
-  // the daily backup runs on first launch
-  await expect(win.getByText('Last backup')).toBeVisible()
+  await expect(win.getByRole('heading', { name: 'Test Print Co' })).toBeVisible()
+  await expect(win.getByText('Quotes awaiting response')).toBeVisible()
 })
 
 test('create a customer', async () => {

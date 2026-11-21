@@ -146,3 +146,26 @@ Choices not dictated by `docs/BUILD_PROMPT.md`. Newest at the bottom.
     the password isn't saved and the no-SMTP fallback is used.
 51. **Document vocabulary**: quotes say "Prepared for", invoices "Bill to", receipts "Received
     from". Invoices show "how to pay" only while a balance is due.
+
+## Phase 4
+
+52. **Sales** in reports and on the dashboard = issued invoices (not draft, not void) by invoice
+    date, before tax and shipping: subtotal − discount + rush. **Collections** = payments by the
+    date received. Archived invoices still count; they were real sales.
+53. **Sales tax report**: gross = net sales + shipping; taxable = the taxable base the invoice
+    charged tax on; exempt = all sales to customers whose exemption applied; non-taxable = the
+    rest (untaxed fees and shipping). Tax is reported on the invoice date (accrual basis).
+    Invoices saved before Phase 4 get their exempt flag inferred from the pricing snapshot.
+54. **Win rate** = approved ÷ (approved + declined + expired) for quotes dated in the range,
+    counting only the latest revision. Sent quotes past their expiration count as expired.
+55. **Production** stages live on the job: an approved quote starts at "Awaiting art", and the
+    stage moves to the invoice on conversion. Invoices made from scratch join the board when you
+    pick a stage. Finished jobs ("Picked up / shipped") stay visible for 30 days.
+56. **Garment order list** preselects jobs still before "Garments ordered", leaves out
+    customer-supplied garments, and estimates cost from each line's garment snapshot. "Mark as
+    ordered" only moves jobs forward.
+57. **Shortcuts**: Ctrl/Cmd+K opens the command palette (the top search bar stays for the mouse);
+    Ctrl/Cmd+P opens the PDF on a quote or invoice page.
+58. **Packaging**: unsigned builds; the NSIS installer lets you pick the folder and never deletes
+    your data on uninstall; macOS dmg for Intel and Apple silicon; no auto-update (`publish:
+    null`), since that would contact a server.

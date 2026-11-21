@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router'
 import { Loading } from '../components/ui'
 import { useInvalidate, useSettings } from '../lib/queries'
@@ -16,6 +16,12 @@ import { PricingPage } from '../features/pricing/PricingPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { SetupWizard } from '../features/setup/SetupWizard'
 import { Layout } from './Layout'
+import { CommandPalette } from '../components/CommandPalette'
+import { useShortcut } from '../lib/shortcuts'
+import { useNewInvoice } from '../features/invoices/InvoicesList'
+import { ProductionBoard } from '../features/production/Board'
+import { GarmentOrderPage } from '../features/production/GarmentOrder'
+import { ReportsPage } from '../features/reports/Reports'
 import { QuoteBuilderPage } from '../features/quotes/QuoteBuilder'
 import { QuotesList, useNewQuote } from '../features/quotes/QuotesList'
 
@@ -23,12 +29,15 @@ function MainEvents() {
   const navigate = useNavigate()
   const invalidate = useInvalidate()
   const newQuote = useNewQuote()
+  const newInvoice = useNewInvoice()
+  const [palette, setPalette] = useState(false)
+  useShortcut('k', () => setPalette((v) => !v))
   useEffect(
     () =>
       window.events.on((e) => {
         if (e.type === 'navigate') navigate(e.to)
         if (e.type === 'backup-done') void invalidate('backups', 'settings')
-        if (e.type === 'command-palette') document.getElementById('global-search')?.focus()
+        if (e.type === 'command-palette') setPalette(true)
         if (e.type === 'new-quote') void newQuote()
       }),
     [navigate, invalidate, newQuote]
@@ -43,7 +52,7 @@ function MainEvents() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [newQuote])
-  return null
+  return <CommandPalette open={palette} onOpenChange={setPalette} actions={{ newQuote: () => void newQuote(), newInvoice: () => void newInvoice() }} />
 }
 
 export function App() {
@@ -62,6 +71,10 @@ export function App() {
           <Route path="quotes/:id" element={<QuoteBuilderPage />} />
           <Route path="invoices" element={<InvoicesList />} />
           <Route path="invoices/:id" element={<InvoicePage />} />
+          <Route path="production" element={<ProductionBoard />} />
+          <Route path="production/garment-order" element={<GarmentOrderPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="reports/:tab" element={<ReportsPage />} />
           <Route path="customers" element={<CustomersList />} />
           <Route path="customers/new" element={<CustomerEditor />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />

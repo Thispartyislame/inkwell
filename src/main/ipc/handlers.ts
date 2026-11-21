@@ -24,6 +24,7 @@ import { globalSearch } from '../db/repos/search'
 import { completeSetup, getSettings, saveSettings, setLastBackupAt, setLogoPath, setSmtpPasswordEnc } from '../db/repos/settings'
 import { removeStoredFile, resolveInside, storeFile } from '../files/files'
 import { createDocumentHandlers } from './quotes'
+import { createReportHandlers } from './reports'
 
 export interface MainContext {
   db: Database.Database
@@ -201,7 +202,8 @@ export function createHandlers(ctx: MainContext): ApiImpl {
       global: (q) => globalSearch(db(), q)
     },
 
-    ...createDocumentHandlers(ctx)
+    ...createDocumentHandlers(ctx),
+    ...createReportHandlers(ctx)
   }
 }
 

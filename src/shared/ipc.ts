@@ -25,6 +25,9 @@ import type {
   SettingsInput
 } from './schemas'
 import type { CustomerDocument } from './documents'
+export type { ReportRange } from './reports'
+import type { DashboardSummary, PaymentsByMethodRow, ReportRange, SalesByCustomerRow, SalesPeriodRow, SalesTaxRow, WinRateReport } from './reports'
+import type { BoardJob, GarmentOrder, JobRef, ProductionStatus } from './production'
 import type { PricingBase, QuoteDetail, QuoteEdit, QuoteListRow, QuoteRecord, QuoteStatus } from './quote'
 import type { InvoiceDetail, InvoiceEdit, InvoiceListRow, InvoiceRecord, InvoiceStatus, Payment, PaymentInput } from './invoice'
 
@@ -263,6 +266,23 @@ export interface Api {
     savePdf(kind: DocumentKind, id: number): string | null
     openPdf(kind: DocumentKind, id: number): string
   }
+  reports: {
+    dashboard(): DashboardSummary
+    sales(range: ReportRange): SalesPeriodRow[]
+    byCustomer(range: ReportRange): SalesByCustomerRow[]
+    salesTax(range: ReportRange): SalesTaxRow[]
+    payments(range: ReportRange): PaymentsByMethodRow[]
+    winRate(range: ReportRange): WinRateReport
+    /** save CSV text through a Save dialog */
+    exportCsv(suggestedName: string, csv: string): string | null
+  }
+  production: {
+    board(): BoardJob[]
+    setStatus(job: JobRef, status: ProductionStatus | null): void
+    garmentOrder(jobs: JobRef[]): GarmentOrder
+    garmentOrderPdf(jobs: JobRef[], mode: 'open' | 'save'): string | null
+    markOrdered(jobs: JobRef[]): void
+  }
   email: {
     compose(kind: DocumentKind, id: number): EmailCompose
     send(input: EmailSendInput): { to: string[] }
@@ -339,7 +359,9 @@ export const API_METHODS: MethodMap = {
   payments: { record: true, void: true },
   attachments: { add: true, update: true, remove: true },
   documents: { preview: true, savePdf: true, openPdf: true },
-  email: { compose: true, send: true, prepareManual: true, test: true }
+  email: { compose: true, send: true, prepareManual: true, test: true },
+  reports: { dashboard: true, sales: true, byCustomer: true, salesTax: true, payments: true, winRate: true, exportCsv: true },
+  production: { board: true, setStatus: true, garmentOrder: true, garmentOrderPdf: true, markOrdered: true }
 }
 
 /** What the renderer sees: every method returns a Promise. */

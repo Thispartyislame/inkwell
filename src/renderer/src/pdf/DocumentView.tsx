@@ -76,6 +76,57 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
         </section>
       )}
 
+      {doc.order && (
+        <section className="inkdoc-order">
+          {doc.order.groups.map((g) => (
+            <table key={g.supplier} className="inkdoc-items">
+              <thead>
+                <tr>
+                  <th colSpan={2} className="inkdoc-supplier">
+                    {g.supplier}
+                  </th>
+                  {doc.order!.size_columns.map((c) => (
+                    <th key={c} className="num">
+                      {c}
+                    </th>
+                  ))}
+                  <th className="num">Total</th>
+                  {doc.order!.show_cost && <th className="num">Est. cost</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {g.rows.map((r, i) => (
+                  <tr key={i}>
+                    <td className="inkdoc-strong">{r.style}</td>
+                    <td>{r.color}</td>
+                    {r.sizes.map((q, j) => (
+                      <td key={j} className="num">
+                        {q}
+                      </td>
+                    ))}
+                    <td className="num inkdoc-strong">{r.total}</td>
+                    {doc.order!.show_cost && <td className="num">{r.cost}</td>}
+                  </tr>
+                ))}
+                <tr className="inkdoc-fee">
+                  <td colSpan={2 + doc.order!.size_columns.length} className="num">
+                    {g.supplier} total
+                  </td>
+                  <td className="num inkdoc-strong">{g.total}</td>
+                  {doc.order!.show_cost && <td className="num inkdoc-strong">{g.cost}</td>}
+                </tr>
+              </tbody>
+            </table>
+          ))}
+          <h3 style={{ marginTop: 16 }}>Jobs included</h3>
+          <ul className="inkdoc-jobs">
+            {doc.order.jobs.map((j) => (
+              <li key={j}>{j}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {(doc.lines.length > 0 || doc.fees.length > 0) && (
       <table className="inkdoc-items">
         <thead>
@@ -122,6 +173,7 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
       </table>
       )}
 
+      {doc.type !== 'garment_order' && (
       <section className="inkdoc-summary">
         <div className="inkdoc-notes">
           {doc.notes && (
@@ -150,6 +202,8 @@ export function DocumentView({ doc }: { doc: CustomerDocument }) {
           )}
         </div>
       </section>
+      )}
+      {doc.type === 'garment_order' && doc.notes && <p className="inkdoc-muted" style={{ marginTop: 10 }}>{doc.notes}</p>}
 
       {doc.how_to_pay && (
         <section className="inkdoc-howtopay">
