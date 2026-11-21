@@ -15,19 +15,33 @@ import { PricingPage } from '../features/pricing/PricingPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { SetupWizard } from '../features/setup/SetupWizard'
 import { Layout } from './Layout'
+import { QuoteBuilderPage } from '../features/quotes/QuoteBuilder'
+import { QuotesList, useNewQuote } from '../features/quotes/QuotesList'
 
 function MainEvents() {
   const navigate = useNavigate()
   const invalidate = useInvalidate()
+  const newQuote = useNewQuote()
   useEffect(
     () =>
       window.events.on((e) => {
         if (e.type === 'navigate') navigate(e.to)
         if (e.type === 'backup-done') void invalidate('backups', 'settings')
         if (e.type === 'command-palette') document.getElementById('global-search')?.focus()
+        if (e.type === 'new-quote') void newQuote()
       }),
-    [navigate, invalidate]
+    [navigate, invalidate, newQuote]
   )
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        if (!e.repeat) void newQuote()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [newQuote])
   return null
 }
 
@@ -43,7 +57,8 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="quotes" element={<ComingSoon what="Quotes" phase={2} />} />
+          <Route path="quotes" element={<QuotesList />} />
+          <Route path="quotes/:id" element={<QuoteBuilderPage />} />
           <Route path="invoices" element={<ComingSoon what="Invoices" phase={3} />} />
           <Route path="customers" element={<CustomersList />} />
           <Route path="customers/new" element={<CustomerEditor />} />

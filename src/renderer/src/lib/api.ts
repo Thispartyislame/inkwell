@@ -32,4 +32,4 @@ export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : St
 export const fieldErrorsOf = (e: unknown): Record<string, string> => (e instanceof ApiError ? e.fields : {})
 
 /** URL for a file stored under the data folder (logo, attachments). */
-export const fileUrl = (relPath: string | null | undefined) => (relPath ? `inkwell-file://local/${relPath.split('/').map(encodeURIComponent).join('/')}` : '')
+export { fileUrl } from '@shared/files'

@@ -323,22 +323,23 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 - [x] E2E smoke: launch, complete wizard, create customer + contact, search, create/duplicate garment, edit matrix, backup
 
 ### Phase 2: Quote builder and PDF
-- [ ] Pricing engine (§4) with the full test list
-- [ ] Quote builder: inline customer pick/create; line items from catalog or custom/customer-supplied; color pick; tab-through size grid with live total
-- [ ] Imprints per line: location, method, method-specific fields, underbase auto-suggest on dark, specialty flags
-- [ ] Duplicate line item; Apply same imprints to all lines
-- [ ] Fees from presets or custom; auto fees (screens, below-min, digitizing, rush)
-- [ ] Live totals sidebar incl. deposit and internal profit/margin
-- [ ] Per-line internal pricing breakdown panel; manual unit-price override (flagged)
-- [ ] Mockup attachments (drag and drop) with include-in-PDF toggle
-- [ ] Notes (customer/internal), expiration, in-hands date; autosave drafts
-- [ ] Statuses Draft → Sent → Approved/Declined/Expired; auto-expire; Revise → `Q-1001-R2` with history
-- [ ] Quote PDF (all spec items; never shows cost/markup/margin/internal notes) + in-app Preview
-- [ ] Shared PDF template system, bundled font, page numbers, repeating headers, no split line items, file naming
-- [ ] Quotes list with status/customer/date filters and columns
-- [ ] Duplicate quote; Reorder (copies, marks screens reorder)
-- [ ] Tests: engine, numbering/revisions, PDF payload never contains internal fields
-- [ ] E2E smoke: build a quote, export PDF
+- [x] Pricing engine (§4) with the full test list (`src/shared/pricing/engine.ts`, 58 tests)
+- [x] Migration 003: quotes, line items, sizes, imprints, fees (child rows keep stable `uid`s)
+- [x] Quote builder: inline customer pick/create; line items from catalog or custom/customer-supplied; color pick; tab-through size grid with live total
+- [x] Imprints per line: location, method, method-specific fields, underbase auto-suggested on dark garments, specialty flags, print size, matrix override, reorder flag
+- [x] Duplicate line item; Apply same imprints to all lines; move lines up/down
+- [x] Fees from presets or custom; automatic screens / digitizing / small-order / rush fees, each can be waived
+- [x] Live totals sidebar incl. discount, rush, tax rate, exempt handling, deposit, internal cost/profit/margin
+- [x] Per-line internal pricing breakdown panel; manual unit-price override per size group (flagged "Manual")
+- [x] Mockup attachments (drag and drop or picker) with caption and include-on-PDF toggle
+- [x] Notes (customer/internal), quote date, valid-until, in-hands date; autosave drafts
+- [x] Statuses Draft → Sent → Approved/Declined/Expired; hourly auto-expire; Revise → `Q-1001-R2` with history; prices freeze when a quote leaves draft
+- [x] Quote PDF (all spec items; never shows cost/markup/margin/internal notes) + in-app Preview
+- [x] Shared PDF template, bundled font, page numbers, repeating headers, no split line items, file naming
+- [x] Quotes list with status/customer/date filters and search; quotes on the customer page and in global search
+- [x] Duplicate quote; Reorder (copies, marks screens reorder); archive/restore
+- [x] Tests: engine, quote repo (round trip, freeze, statuses, expiry, revisions, duplicate/reorder, lists), customer document has no internal data
+- [x] E2E: build a quote via UI (combined pricing, override, fees), autosave, preview, PDF, send, revise, reorder, Ctrl+N
 
 ### Phase 3: Invoices, payments, sending
 - [ ] Convert approved quote → invoice (one click, links both ways, activity log, frozen prices)
@@ -358,7 +359,7 @@ quote→invoice conversion freezes prices (repo-level test against an in-memory 
 ### Phase 4: Dashboard, reports, polish
 - [ ] Dashboard widgets (awaiting response, expiring this week, outstanding, overdue, revenue MoM, upcoming in-hands)
 - [ ] Reports + CSV export: sales by month, by customer, sales tax by period (taxable vs exempt), payments by method, win rate
-- [ ] Global search; command palette (Ctrl/Cmd+K); Ctrl/Cmd+N; Ctrl/Cmd+P
+- [ ] Global search for invoices; command palette (Ctrl/Cmd+K); Ctrl/Cmd+P  (search over quotes/customers/garments and Ctrl/Cmd+N are done)
 - [ ] Production status field + board view
 - [ ] Garment order list (supplier → style → color → size), CSV + PDF
 - [ ] Packaging: Windows NSIS + macOS dmg, icon, version in Settings → About

@@ -12,12 +12,12 @@ export default defineConfig({
   },
   preload: {
     resolve: { alias: shared },
-    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/preload/index.ts') } } }
+    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/preload/index.ts'), pdf: resolve(__dirname, 'src/preload/pdf.ts') } } }
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     resolve: { alias: { ...shared, '@': resolve(__dirname, 'src/renderer/src') } },
     plugins: [react(), tailwindcss()],
-    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } } }
+    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html'), pdf: resolve(__dirname, 'src/renderer/pdf.html') } } }
   }
 })

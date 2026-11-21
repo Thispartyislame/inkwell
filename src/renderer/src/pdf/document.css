@@ -1,0 +1,325 @@
+/* Printable documents. Everything is scoped to .inkdoc so the in-app preview can reuse it. */
+@page {
+  size: letter;
+}
+body.inkdoc-print {
+  margin: 0;
+  background: #fff;
+}
+.inkdoc {
+  --doc-accent: #2563eb;
+  --doc-ink: #1b1f27;
+  --doc-muted: #6b7280;
+  --doc-rule: #e3e6eb;
+  position: relative;
+  box-sizing: border-box;
+  width: 7.5in;
+  color: var(--doc-ink);
+  background: #fff;
+  font-family: 'Inter Variable', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  font-feature-settings: 'tnum', 'cv11';
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.inkdoc *,
+.inkdoc *::before,
+.inkdoc *::after {
+  box-sizing: border-box;
+}
+.inkdoc h1,
+.inkdoc h3,
+.inkdoc p,
+.inkdoc figure {
+  margin: 0;
+}
+.inkdoc h3 {
+  margin-bottom: 4px;
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--doc-muted);
+}
+.inkdoc .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.inkdoc-strong {
+  font-weight: 600;
+}
+.inkdoc-muted,
+.inkdoc .inkdoc-muted th,
+.inkdoc .inkdoc-muted td {
+  color: var(--doc-muted);
+}
+
+.inkdoc-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2.5px solid var(--doc-accent);
+}
+.inkdoc-shop {
+  display: flex;
+  gap: 14px;
+  color: var(--doc-muted);
+  font-size: 8.5pt;
+}
+.inkdoc-logo {
+  max-width: 1.4in;
+  max-height: 0.9in;
+  object-fit: contain;
+}
+.inkdoc-shopname {
+  margin-bottom: 2px;
+  color: var(--doc-ink);
+  font-size: 13pt;
+  font-weight: 700;
+}
+.inkdoc-title {
+  text-align: right;
+}
+.inkdoc-title h1 {
+  color: var(--doc-accent);
+  font-size: 22pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.inkdoc-number {
+  margin: 2px 0 8px;
+  font-size: 11pt;
+  font-weight: 600;
+}
+.inkdoc-meta {
+  margin-left: auto;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+}
+.inkdoc-meta th {
+  padding: 1px 10px 1px 0;
+  color: var(--doc-muted);
+  font-weight: 500;
+  text-align: right;
+}
+.inkdoc-meta td {
+  padding: 1px 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.inkdoc-parties {
+  display: flex;
+  gap: 40px;
+  margin: 18px 0 20px;
+}
+.inkdoc-parties > div {
+  min-width: 1.8in;
+}
+
+.inkdoc-items {
+  width: 100%;
+  border-collapse: collapse;
+}
+.inkdoc-items thead {
+  display: table-header-group; /* repeats on every page */
+}
+.inkdoc-items th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--doc-ink);
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+.inkdoc-items th.num {
+  text-align: right;
+}
+.inkdoc-items td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--doc-rule);
+  vertical-align: top;
+}
+.inkdoc-items tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.inkdoc-items th:first-child,
+.inkdoc-items td:first-child {
+  padding-left: 0;
+}
+.inkdoc-items th:last-child,
+.inkdoc-items td:last-child {
+  padding-right: 0;
+}
+.inkdoc-color {
+  font-weight: 400;
+  color: var(--doc-muted);
+}
+.inkdoc-sizes {
+  display: inline-block;
+  margin: 4px 0 3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #f2f4f7;
+  font-size: 8.5pt;
+  white-space: pre-wrap;
+  word-spacing: 2px;
+}
+.inkdoc-imprint {
+  padding-left: 10px;
+  color: #3d4452;
+  font-size: 8.5pt;
+  position: relative;
+}
+.inkdoc-imprint::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--doc-accent);
+}
+.inkdoc-fee td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 9pt;
+}
+
+.inkdoc-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  margin-top: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.inkdoc-notes {
+  flex: 1;
+  white-space: pre-wrap;
+}
+.inkdoc-totals {
+  width: 2.9in;
+}
+.inkdoc-totals table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.inkdoc-totals th {
+  padding: 3px 0;
+  font-weight: 500;
+  text-align: left;
+}
+.inkdoc-totals td {
+  padding: 3px 0;
+}
+.inkdoc-grand th,
+.inkdoc-grand td {
+  padding-top: 7px !important;
+  border-top: 1px solid var(--doc-ink);
+  font-size: 12pt;
+  font-weight: 700 !important;
+}
+.inkdoc-callout {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--doc-accent) 10%, white);
+  color: var(--doc-ink);
+}
+
+.inkdoc-images {
+  margin-top: 24px;
+}
+.inkdoc-imgrow {
+  margin-bottom: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.inkdoc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.inkdoc-grid figure {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  padding: 8px;
+  border: 1px solid var(--doc-rule);
+  border-radius: 4px;
+  text-align: center;
+}
+.inkdoc-grid img {
+  max-width: 100%;
+  max-height: 3.6in;
+  object-fit: contain;
+}
+.inkdoc-grid figcaption {
+  margin-top: 4px;
+  color: var(--doc-muted);
+  font-size: 8pt;
+}
+
+.inkdoc-terms {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--doc-rule);
+  break-inside: avoid;
+  page-break-inside: avoid;
+  font-size: 7.5pt;
+  color: #4b5160;
+}
+.inkdoc-terms p {
+  white-space: pre-wrap;
+}
+.inkdoc-sign {
+  display: flex;
+  gap: 24px;
+  margin-top: 28px;
+  color: var(--doc-muted);
+}
+.inkdoc-sign > div {
+  flex: 2;
+}
+.inkdoc-sign > .inkdoc-sign-date {
+  flex: 1;
+}
+.inkdoc-sign span {
+  display: block;
+  height: 22px;
+  margin-bottom: 3px;
+  border-bottom: 1px solid var(--doc-ink);
+}
+.inkdoc-footer {
+  margin-top: 18px;
+  color: var(--doc-muted);
+  font-size: 8pt;
+  text-align: center;
+  white-space: pre-wrap;
+}
+.inkdoc-stamp {
+  position: fixed;
+  top: 3.2in;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+  color: rgba(220, 38, 38, 0.13);
+  font-size: 80pt;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  transform: rotate(-24deg);
+}
+.inkdoc-preview .inkdoc-stamp {
+  position: absolute;
+}

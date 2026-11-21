@@ -24,6 +24,8 @@ import type {
   Settings,
   SettingsInput
 } from './schemas'
+import type { CustomerDocument } from './documents'
+import type { PricingBase, QuoteDetail, QuoteEdit, QuoteListRow, QuoteRecord, QuoteStatus } from './quote'
 
 export interface AppInfo {
   version: string
@@ -77,6 +79,22 @@ export interface SearchResult {
   id: number
   title: string
   subtitle: string
+}
+
+export interface QuoteFilter {
+  status?: QuoteStatus | 'open'
+  customer_id?: number
+  from?: string
+  to?: string
+  search?: string
+  includeArchived?: boolean
+  includeSuperseded?: boolean
+}
+
+export interface AttachmentPatch {
+  caption?: string
+  include_in_pdf?: boolean
+  kind?: Attachment['kind']
 }
 
 export interface SetupInput {
@@ -167,6 +185,28 @@ export interface Api {
   search: {
     global(query: string): SearchResult[]
   }
+  quotes: {
+    list(filter: QuoteFilter): QuoteListRow[]
+    get(id: number): QuoteDetail
+    create(opts: { customer_id?: number | null }): QuoteRecord
+    save(input: QuoteEdit): QuoteDetail
+    pricingBase(): PricingBase
+    markSent(id: number): QuoteDetail
+    approve(id: number, approvedBy: string): QuoteDetail
+    decline(id: number, reason: string): QuoteDetail
+    revise(id: number): QuoteRecord
+    duplicate(id: number): QuoteRecord
+    reorder(id: number): QuoteRecord
+    archive(id: number): QuoteDetail
+    restore(id: number): QuoteDetail
+    /** paths from drag and drop; null opens a file picker */
+    addAttachments(quoteId: number, paths: string[] | null): Attachment[]
+    updateAttachment(id: number, patch: AttachmentPatch): Attachment
+    deleteAttachment(id: number): void
+    document(id: number): CustomerDocument
+    savePdf(id: number): string | null
+    openPdf(id: number): string
+  }
 }
 
 type MethodMap = { [D in keyof Api]: { [M in keyof Api[D]]: true } }
@@ -206,7 +246,28 @@ export const API_METHODS: MethodMap = {
     restoreInk: true
   },
   backup: { list: true, now: true, pickAndRestore: true, restore: true, reveal: true },
-  search: { global: true }
+  search: { global: true },
+  quotes: {
+    list: true,
+    get: true,
+    create: true,
+    save: true,
+    pricingBase: true,
+    markSent: true,
+    approve: true,
+    decline: true,
+    revise: true,
+    duplicate: true,
+    reorder: true,
+    archive: true,
+    restore: true,
+    addAttachments: true,
+    updateAttachment: true,
+    deleteAttachment: true,
+    document: true,
+    savePdf: true,
+    openPdf: true
+  }
 }
 
 /** What the renderer sees: every method returns a Promise. */
@@ -226,6 +287,6 @@ export type ApiImpl = {
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: { message: string; fields?: Record<string, string> } }
 
 /** Events main sends to the renderer (menu shortcuts, background jobs). */
-export type MainEvent = { type: 'navigate'; to: string } | { type: 'backup-done'; backup: BackupInfo } | { type: 'command-palette' }
+export type MainEvent = { type: 'navigate'; to: string } | { type: 'new-quote' } | { type: 'backup-done'; backup: BackupInfo } | { type: 'command-palette' }
 
 export const channel = (domain: string, method: string) => `api:${domain}.${method}`

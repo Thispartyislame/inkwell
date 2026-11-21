@@ -4,9 +4,23 @@ A local-first desktop app for screen printing and custom apparel shops: build ac
 fast, turn approved quotes into invoices, track payments, and send professional PDFs. Everything
 stays on your computer and works without an internet connection.
 
-**Status:** Phase 1 of 5 is done (setup wizard, customers, garment catalog with CSV import,
-pricing matrices and rules, fee presets, ink library, settings, backups). Quotes arrive in
-Phase 2, invoices in Phase 3. See [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
+**Status:** Phases 1 and 2 of 5 are done: setup wizard, customers, garment catalog with CSV
+import, pricing matrices and rules (including margin-based markup), fee presets, ink library,
+settings, backups, and the quote builder with live pricing, revisions and quote PDFs. Invoices
+and payments arrive in Phase 3. See [`docs/PLAN.md`](docs/PLAN.md) for the full checklist.
+
+## Building a quote
+
+**Quotes → New quote** (or Ctrl/Cmd+N). Pick or add the customer, add a line item (search your
+catalog, or choose a custom or customer-supplied item), pick the color, type quantities into the
+size grid, and add imprints. Prices update as you type and the quote saves itself. Open
+**Pricing breakdown** on a line to see exactly how each unit price was built (internal only) or
+to set a price by hand. **Duplicate** a line to put the same design on another color; lines with
+identical imprints share quantity breaks and screens.
+
+**Preview** shows the customer's view. **Save PDF** / **Open PDF** export it. **Mark as sent**
+locks the prices; to change a sent quote use **Revise**, which makes `Q-1001-R2` and keeps the
+original. **Reorder this job** copies a past quote with screens marked as on file.
 
 ## Run it
 
@@ -22,7 +36,7 @@ npm run dev
 ## Tests
 
 ```bash
-npm test            # unit tests (money, numbering, CSV import, pricing, database, backups)
+npm test            # unit tests (money, numbering, CSV import, pricing engine, quotes, database, backups)
 npm run typecheck   # TypeScript, main + renderer
 npm run test:e2e    # builds, then drives the real app with Playwright
 ```
@@ -57,7 +71,7 @@ Inside it:
 - `inkwell.db`: the database (SQLite)
 - `attachments/`: your logo, tax certificates, and later mockups and artwork
 - `backups/`: automatic and manual backups
-- `pdfs/`: generated documents (from Phase 2)
+- `pdfs/`: a copy of every PDF you generate
 
 ## Backups and restore
 

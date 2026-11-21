@@ -23,6 +23,7 @@ import * as pricing from '../db/repos/pricing'
 import { globalSearch } from '../db/repos/search'
 import { completeSetup, getSettings, saveSettings, setLastBackupAt, setLogoPath, setSmtpPasswordEnc } from '../db/repos/settings'
 import { removeStoredFile, resolveInside, storeFile } from '../files/files'
+import { createQuoteHandlers } from './quotes'
 
 export interface MainContext {
   db: Database.Database
@@ -198,7 +199,9 @@ export function createHandlers(ctx: MainContext): ApiImpl {
 
     search: {
       global: (q) => globalSearch(db(), q)
-    }
+    },
+
+    quotes: createQuoteHandlers(ctx)
   }
 }
 

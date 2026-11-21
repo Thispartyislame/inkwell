@@ -6,7 +6,9 @@ import type Database from 'better-sqlite3'
 import type { MainEvent } from '@shared/ipc'
 import { backupIsDue, backupDatabase, replaceDatabaseFile } from './backup/backup'
 import { openDatabase } from './db/connection'
+import { expireQuotes } from './db/repos/quotes'
 import { getSettings, setLastBackupAt } from './db/repos/settings'
+import { todayIso } from '@shared/dates'
 import { resolveInside } from './files/files'
 import { createHandlers, type MainContext } from './ipc/handlers'
 import { registerIpc } from './ipc/register'
@@ -79,10 +81,12 @@ if (!app.requestSingleInstanceLock()) {
       {
         label: 'File',
         submenu: [
+          // The window handles Ctrl/Cmd+N itself; the menu only shows the shortcut (avoids firing twice).
+          { label: 'New Quote', accelerator: 'CmdOrCtrl+N', registerAccelerator: false, click: () => send({ type: 'new-quote' }) },
           { label: 'New Customer', click: nav('/customers/new') },
           { label: 'New Garment', click: nav('/catalog/new') },
           { type: 'separator' },
-          { label: 'Search…', accelerator: 'CmdOrCtrl+K', click: () => send({ type: 'command-palette' }) },
+          { label: 'Search…', accelerator: 'CmdOrCtrl+K', registerAccelerator: false, click: () => send({ type: 'command-palette' }) },
           { type: 'separator' },
           { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: nav('/settings') },
           { label: 'Backups', click: nav('/settings/backups') },
@@ -95,9 +99,10 @@ if (!app.requestSingleInstanceLock()) {
         label: 'View',
         submenu: [
           { label: 'Dashboard', accelerator: 'CmdOrCtrl+1', click: nav('/') },
-          { label: 'Customers', accelerator: 'CmdOrCtrl+2', click: nav('/customers') },
-          { label: 'Catalog', accelerator: 'CmdOrCtrl+3', click: nav('/catalog') },
-          { label: 'Pricing', accelerator: 'CmdOrCtrl+4', click: nav('/pricing') },
+          { label: 'Quotes', accelerator: 'CmdOrCtrl+2', click: nav('/quotes') },
+          { label: 'Customers', accelerator: 'CmdOrCtrl+3', click: nav('/customers') },
+          { label: 'Catalog', accelerator: 'CmdOrCtrl+4', click: nav('/catalog') },
+          { label: 'Pricing', accelerator: 'CmdOrCtrl+5', click: nav('/pricing') },
           { type: 'separator' },
           { role: 'reload' },
           { role: 'toggleDevTools' },
@@ -158,8 +163,16 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu()
     createWindow()
 
-    void runScheduledBackup()
-    setInterval(() => void runScheduledBackup(), 60 * 60 * 1000).unref()
+    const hourly = () => {
+      void runScheduledBackup()
+      try {
+        expireQuotes(db, todayIso())
+      } catch (err) {
+        console.error('[quotes] expiry sweep failed', err)
+      }
+    }
+    hourly()
+    setInterval(hourly, 60 * 60 * 1000).unref()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

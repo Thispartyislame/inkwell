@@ -34,3 +34,24 @@ export function addAttachment(
 export function deleteAttachmentRow(db: Database.Database, id: number): void {
   db.prepare('DELETE FROM attachments WHERE id = ?').run(id)
 }
+
+export function updateAttachment(db: Database.Database, id: number, patch: { caption?: string; include_in_pdf?: boolean; kind?: Attachment['kind'] }): Attachment {
+  getAttachment(db, id)
+  const sets: string[] = []
+  const p: Record<string, unknown> = { id }
+  if (patch.caption !== undefined) {
+    sets.push('caption = @caption')
+    p.caption = String(patch.caption).slice(0, 300)
+  }
+  if (patch.include_in_pdf !== undefined) {
+    sets.push('include_in_pdf = @inc')
+    p.inc = patch.include_in_pdf ? 1 : 0
+  }
+  if (patch.kind !== undefined) {
+    if (!['mockup', 'artwork', 'proof', 'tax_cert', 'film', 'logo', 'other'].includes(patch.kind)) throw new Error('Bad attachment kind')
+    sets.push('kind = @kind')
+    p.kind = patch.kind
+  }
+  if (sets.length) db.prepare(`UPDATE attachments SET ${sets.join(', ')}, updated_at = datetime('now') WHERE id = @id`).run(p)
+  return getAttachment(db, id)
+}

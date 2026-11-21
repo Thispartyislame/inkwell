@@ -74,3 +74,42 @@ Choices not dictated by `docs/BUILD_PROMPT.md`. Newest at the bottom.
     upcharge, before decoration. Margin = (sell − cost) ÷ sell. Shown in the catalog list, the
     garment editor and a preview table in Pricing rules; internal only. Full job cost and margin
     (with printing) comes with the quote builder.
+
+## Phase 2
+
+30. **Quotes are saved whole.** The builder edits one document (lines, sizes, imprints, fees)
+    and autosaves it 600 ms after the last change; the save replaces the child rows in one
+    transaction. Child rows carry stable `uid`s so the editor keeps focus and state across saves.
+    The activity log records at most one "edited" entry per 10 minutes.
+31. **Prices freeze when a quote leaves draft.** Each save stores the pricing configuration it
+    used (rules, matrices, rounding, tax default, the customer's exempt status). Drafts always
+    reprice with the current configuration; sent, approved, declined and expired quotes keep the
+    configuration they were sent with, so later pricing changes never alter them. To change a
+    non-draft quote, use Revise.
+32. **Revisions** share the root number (`Q-1001`, `Q-1001-R2`, …), don't consume a new quote
+    number, start as drafts with today's date, and copy the attachments. The replaced revision
+    becomes "Revised" (`superseded`) and is hidden from the quotes list by default.
+33. **Automatic fees come from the pricing rules**, not from fee presets: screens (per unique
+    design: lines with identical imprints share screens), digitizing (per new embroidery design),
+    small-order fee, and rush. Each can be waived per quote. Their taxability follows the matching
+    fee preset (Screen Setup, Digitizing, Rush). Presets of those kinds can still be added by
+    hand for extra charges.
+34. **Matrix choice per imprint**: the imprint's own matrix if picked, else the customer's
+    default matrix when it is for the same method, else the default matrix for the method. Pick
+    the contract-print matrix on imprints for customer-supplied garments.
+35. **Customer-supplied garments** have no garment price and no size upcharge, and count as $0
+    cost in the profit estimate.
+36. **Quantity below the first break** is priced at the first break with a note; the small-order
+    fee applies separately when the whole quote is under the minimum.
+37. **Expired exemption certificate**: tax stays off, a red warning shows in the totals, and
+    "Charge tax anyway" turns tax on for that quote.
+38. **Quote PDFs** are rendered by loading the same React template the preview uses into a hidden
+    window and printing it (Letter, 0.5" margins, "Page X of Y" footer). A copy of every
+    generated PDF is kept in `pdfs/` in the data folder. Drafts print without a watermark, since
+    they are usually exported just before being sent; approved/declined/expired/revised quotes
+    get a faint stamp.
+39. **Keyboard shortcuts** (Ctrl/Cmd+N new quote, Ctrl/Cmd+K search) are handled by the window;
+    the menu only displays them, so they can't fire twice.
+40. **Attachments** accept images, PDF, AI, EPS, PSD and TIFF up to 100 MB each. Only images
+    can be placed on the PDF. Files are copied into the data folder; deleting one never touches
+    the original.

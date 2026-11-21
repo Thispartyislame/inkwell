@@ -9,7 +9,7 @@ export const queryClient = new QueryClient({
 export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() })
 export const useAppInfo = () => useQuery({ queryKey: ['app-info'], queryFn: () => api.app.info() })
 export const useCustomers = (f: CustomerFilter) => useQuery({ queryKey: ['customers', f], queryFn: () => api.customers.list(f) })
-export const useCustomer = (id: number) => useQuery({ queryKey: ['customer', id], queryFn: () => api.customers.get(id), enabled: id > 0 })
+export const useCustomer = (id: number) => useQuery({ queryKey: ['customer', id], queryFn: () => api.customers.get(id), enabled: id > 0, refetchOnMount: 'always' })
 export const useTags = () => useQuery({ queryKey: ['customer-tags'], queryFn: () => api.customers.tags() })
 export const useGarments = (f: GarmentFilter) => useQuery({ queryKey: ['garments', f], queryFn: () => api.garments.list(f) })
 export const useGarment = (id: number) => useQuery({ queryKey: ['garment', id], queryFn: () => api.garments.get(id), enabled: id > 0 })

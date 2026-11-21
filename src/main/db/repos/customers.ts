@@ -14,6 +14,7 @@ import { NotFoundError, parseOrThrow } from '../errors'
 import { fromRow, insert, likePattern, now, toRow, update } from '../rows'
 import { listActivity, logActivity } from './activity'
 import { findAttachment } from './attachments'
+import { customerQuoteStats, listQuotes } from './quotes'
 
 const SPEC = { bool: ['shipping_same_as_billing', 'tax_exempt'], json: ['tags'] } as const
 
@@ -52,9 +53,9 @@ export function listCustomers(db: Database.Database, f: CustomerFilter = {}): Cu
   })
 }
 
-/** Quote/invoice counts and balance. Quotes and invoices arrive in Phases 2 and 3. */
-export function customerStats(_db: Database.Database, _customerId: number): Pick<CustomerListRow, 'quote_count' | 'invoice_count' | 'balance_cents'> {
-  return { quote_count: 0, invoice_count: 0, balance_cents: 0 }
+/** Quote/invoice counts and balance. Invoices (and so balances) arrive in Phase 3. */
+export function customerStats(db: Database.Database, customerId: number): Pick<CustomerListRow, 'quote_count' | 'invoice_count' | 'balance_cents'> {
+  return { quote_count: customerQuoteStats(db, customerId).count, invoice_count: 0, balance_cents: 0 }
 }
 
 export function getCustomerDetail(db: Database.Database, id: number): CustomerDetail {
@@ -63,7 +64,7 @@ export function getCustomerDetail(db: Database.Database, id: number): CustomerDe
     customer,
     contacts: listContacts(db, id),
     certAttachment: findAttachment(db, customer.exempt_cert_attachment_id),
-    quotes: [],
+    quotes: listQuotes(db, { customer_id: id }).map((q) => ({ id: q.id, number: q.number, job_name: q.job_name, status: q.status, total_cents: q.total_cents, issued_on: q.issued_on })),
     invoices: [],
     balance_cents: customerStats(db, id).balance_cents,
     activity: listActivity(db, 'customer', id)

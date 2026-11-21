@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { API_METHODS, channel, type MainEvent } from '../shared/ipc'
 
 // Each method resolves to an IpcResult ({ ok, data } | { ok: false, error }). The renderer's
@@ -20,3 +20,6 @@ contextBridge.exposeInMainWorld('events', {
     return () => ipcRenderer.removeListener('main-event', listener)
   }
 })
+
+// Paths of files dropped on the window (drag and drop of mockups and artwork).
+contextBridge.exposeInMainWorld('files', { pathFor: (file: File) => webUtils.getPathForFile(file) })

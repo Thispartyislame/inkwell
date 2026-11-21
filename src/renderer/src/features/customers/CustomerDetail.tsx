@@ -9,6 +9,10 @@ import { api } from '../../lib/api'
 import { useForm } from '../../lib/form'
 import { useCustomer, useInvalidate } from '../../lib/queries'
 import { exemptStatus } from './exempt'
+import { QuoteStatusBadge } from '../quotes/status'
+import { useNewQuote } from '../quotes/QuotesList'
+import type { QuoteStatus } from '@shared/quote'
+import { formatDate } from '@shared/dates'
 
 function address(c: Customer, kind: 'billing' | 'shipping') {
   const k = (s: string) => c[`${kind}_${s}` as keyof Customer] as string
@@ -70,6 +74,7 @@ export function CustomerDetailPage() {
   const [contact, setContact] = useState<Contact | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Contact | null>(null)
   const [archiving, setArchiving] = useState(false)
+  const newQuote = useNewQuote()
 
   if (isLoading) return <Loading />
   if (error || !data) return <EmptyState title="Customer not found" action={<Button onClick={() => navigate('/customers')}>Back to customers</Button>} />
@@ -134,12 +139,33 @@ export function CustomerDetailPage() {
             </Card>
           </div>
 
-          <Card title="Quotes & invoices">
-            {data.quotes.length + data.invoices.length === 0 ? (
+          <Card
+            title="Quotes"
+            actions={
+              <Button size="sm" icon={<Plus className="size-3.5" />} onClick={() => newQuote(id)} disabled={!!c.archived_at}>
+                New quote
+              </Button>
+            }
+          >
+            {data.quotes.length === 0 ? (
               <p className="flex items-center gap-2 text-sm text-slate-500">
-                <FileText className="size-4" /> Nothing yet. Quotes arrive in Phase 2 and invoices in Phase 3.
+                <FileText className="size-4" /> No quotes yet. Invoices arrive in Phase 3.
               </p>
-            ) : null}
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {data.quotes.map((q) => (
+                  <li key={q.id}>
+                    <Link to={`/quotes/${q.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <span className="w-28 font-medium">{q.number}</span>
+                      <span className="min-w-0 flex-1 truncate text-slate-600 dark:text-slate-400">{q.job_name}</span>
+                      <QuoteStatusBadge status={q.status as QuoteStatus} />
+                      <span className="w-24 text-right tabular">{formatMoney(q.total_cents)}</span>
+                      <span className="w-24 text-right text-xs text-slate-500">{formatDate(q.issued_on)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
 
           <Card
